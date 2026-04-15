@@ -11,7 +11,7 @@
       theme: { extend: { colors: { brand: '#2563eb' } } }
     }
   </script>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2" />
 </head>
 
 <body class="bg-[#f0f2f5] text-gray-900">
@@ -51,7 +51,7 @@
       <p id="lobby-error" class="text-red-500 text-sm text-center mt-2 hidden"></p>
 
       <button class="mt-6 text-xs text-gray-400 underline mx-auto block" 
-        onclick="localStorage.clear();sessionStorage.clear();if('caches' in window){caches.keys().then(n=>n.forEach(k=>caches.delete(k)))};location.reload(true);">
+        onclick="localStorage.clear();sessionStorage.clear();window.location.href=window.location.pathname+'?t='+Date.now()">
         🗑️ Xoá Cache
       </button>
     </div>
@@ -151,6 +151,6 @@
   <!-- ======== TOAST CONTAINER ======== -->
   <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-  <script src="game.js"></script>
+  <script src="game.js?v=2"></script>
 </body>
 </html>
