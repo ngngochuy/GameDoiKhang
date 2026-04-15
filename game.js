@@ -24,6 +24,8 @@ let myGuessCount = 0;
 let isLiveTest = false;
 let liveTestSecret = null;
 let mySecret = null;
+let isPaused = false;
+let myPausesLeft = 5;
 
 const TURN_DURATION = 60;
 const DIGITS = 4;
@@ -341,6 +343,15 @@ function startPolling(mode) {
           // Update turn
           const wasMyTurn = isMyTurn;
           isMyTurn = (room.current_turn === myRole);
+          
+          if (room.is_paused) {
+            isPaused = true;
+            showPauseModal(room);
+          } else {
+            isPaused = false;
+            document.getElementById('modal-pause').classList.add('hidden');
+          }
+          
           updateTurnUI(room);
 
           // Fetch new guesses — chỉ hiện lịch sử của mình
@@ -384,6 +395,10 @@ function enterGameScreen(room) {
   document.getElementById('mode-badge').style.background = '#3b82f6';
   
   if (room && room.my_secret) mySecret = room.my_secret;
+  if (room) {
+    isPaused = room.is_paused;
+    myPausesLeft = (myRole === 'player1') ? room.player1_pauses : room.player2_pauses;
+  }
 
   const secContainer = document.getElementById('my-secret-container');
   if (isLiveTest) {
@@ -418,14 +433,14 @@ function updateTurnUI(room) {
 
   // Timer
   if (room.turn_start_time) {
-    startTimerFromServer(room.turn_start_time);
+    startTimerFromServer(room.turn_start_time, room);
   }
 }
 
 // ============================================
 // TIMER
 // ============================================
-function startTimerFromServer(serverStart) {
+function startTimerFromServer(serverStart, room) {
   if (timerRAF) cancelAnimationFrame(timerRAF);
   turnStartTime = serverStart;
 
@@ -433,7 +448,11 @@ function startTimerFromServer(serverStart) {
   const timerText = document.getElementById('timer-text');
 
   function tick() {
-    const elapsed = (Date.now() - turnStartTime) / 1000;
+    let elapsed = (Date.now() - turnStartTime) / 1000;
+    if (isPaused && room && room.turn_pause_time) {
+       elapsed = (room.turn_pause_time - turnStartTime) / 1000;
+    }
+
     const remaining = Math.max(0, TURN_DURATION - elapsed);
     timerBar.style.width = (remaining / TURN_DURATION) * 100 + '%';
     timerText.textContent = Math.ceil(remaining) + 's';
@@ -442,13 +461,17 @@ function startTimerFromServer(serverStart) {
     if (remaining <= 5) timerBar.classList.add('danger');
     else if (remaining <= 10) timerBar.classList.add('warning');
 
-    if (remaining <= 0 && isMyTurn) {
-      autoSubmitRandomGuess();
+    if (remaining <= 0 && isMyTurn && !isPaused && !isLiveTest) {
+      autoSubmitRandomGuess(); // use original timeout fn
       return;
     }
-    timerRAF = requestAnimationFrame(tick);
+    
+    // Continue running if not paused
+    if (!isPaused) {
+      timerRAF = requestAnimationFrame(tick);
+    }
   }
-  timerRAF = requestAnimationFrame(tick);
+  tick(); // draw immediately
 }
 
 function startLocalTimer() {
@@ -586,6 +609,80 @@ function showToast(msg, type = 'info', duration = 4000) {
   }, duration);
 }
 
+// ============================================
+// PAUSE LOGIC
+// ============================================
+async function pauseGame() {
+  if (myPausesLeft <= 0) {
+    showToast('Bạn đã hết lượt tạm dừng', 'warning');
+    return;
+  }
+  document.getElementById('btn-pause').classList.add('opacity-50', 'pointer-events-none');
+  const data = await api('pause_game', { room_id: roomId, player_id: myPlayerId });
+  document.getElementById('btn-pause').classList.remove('opacity-50', 'pointer-events-none');
+  if (data.error) showToast(data.error, 'error');
+}
+
+async function resumeGame() {
+  const btn = document.getElementById('btn-resume');
+  btn.disabled = true;
+  btn.classList.add('opacity-50');
+  const data = await api('resume_game', { room_id: roomId, player_id: myPlayerId });
+  if (data.error) {
+    showToast(data.error, 'error');
+    btn.disabled = false;
+    btn.classList.remove('opacity-50');
+  }
+}
+
+function showPauseModal(room) {
+  document.getElementById('modal-pause').classList.remove('hidden');
+  
+  myPausesLeft = (myRole === 'player1') ? room.player1_pauses : room.player2_pauses;
+  document.getElementById('pause-count').textContent = myPausesLeft;
+
+  const btnResume = document.getElementById('btn-resume');
+  const btnText = document.getElementById('btn-resume-text');
+  const progress = document.getElementById('resume-progress');
+  const statusText = document.getElementById('pause-status-text');
+
+  const myReq = (myRole === 'player1') ? room.resume_request_p1 : room.resume_request_p2;
+  const otherReq = (myRole === 'player1') ? room.resume_request_p2 : room.resume_request_p1;
+
+  if (myReq) {
+     btnResume.disabled = true;
+     btnResume.classList.add('opacity-50');
+     const timeLeftMs = 10000 - (Date.now() - myReq);
+     if (timeLeftMs > 0) {
+       btnText.textContent = `Chờ đối thủ (${Math.floor(timeLeftMs/1000)}s)...`;
+       progress.style.width = `${(timeLeftMs/10000)*100}%`;
+       statusText.textContent = 'Bạn đã yêu cầu tiếp tục. Đang chờ đối thủ...';
+     } else {
+       btnText.textContent = 'Hết giờ yêu cầu';
+       progress.style.width = '0%';
+     }
+  } else if (otherReq) {
+     btnResume.disabled = false;
+     btnResume.classList.remove('opacity-50');
+     const timeLeftMs = 10000 - (Date.now() - otherReq);
+     if (timeLeftMs > 0) {
+       btnText.textContent = `Đồng ý tiếp tục (${Math.floor(timeLeftMs/1000)}s)`;
+       progress.style.width = '0%';
+       statusText.textContent = 'Đối thủ muốn tiếp tục trò chơi!';
+     } else {
+       btnText.textContent = 'Tiếp tục chơi';
+       progress.style.width = '0%';
+       statusText.textContent = 'Hai bên cùng nhấn tiếp tục để chơi tiếp.';
+     }
+  } else {
+     btnResume.disabled = false;
+     btnResume.classList.remove('opacity-50');
+     btnText.textContent = 'Tiếp tục chơi';
+     progress.style.width = '0%';
+     statusText.textContent = 'Cả hai cùng nhấn Tiếp tục để chơi tiếp.';
+  }
+}
+
 function clearGuessInputs() {
   ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
     document.getElementById(id).value = '';
@@ -618,6 +715,8 @@ function resetState() {
   isLiveTest = false;
   liveTestSecret = null;
   mySecret = null;
+  isPaused = false;
+  myPausesLeft = 5;
   if (timerRAF) cancelAnimationFrame(timerRAF);
   stopPolling();
 

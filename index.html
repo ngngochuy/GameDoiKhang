@@ -60,6 +60,18 @@
         onclick="localStorage.clear();sessionStorage.clear();window.location.href=window.location.pathname+'?t='+Date.now()">
         Xoá cache
       </button>
+
+      <!-- INSTRUCTIONS -->
+      <div class="mt-6 bg-[#111827] rounded-xl p-4 border border-slate-800 text-left">
+        <h3 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Hướng dẫn nhanh</h3>
+        <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
+          <li>Mỗi người đặt 1 số bí mật 4 chữ số.</li>
+          <li>Mỗi lượt có 60s để đoán số đối phương.</li>
+          <li>Game báo <b class="text-emerald-400">X ĐÚNG</b> tức là có X chữ số trùng khớp (không phân biệt vị trí).</li>
+          <li>Ai đoán trúng cả 4 số trước sẽ <b>thắng</b>.</li>
+          <li>Có thể <b>Tạm dừng</b> tối đa 5 lần/ván.</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -111,19 +123,24 @@
   <div id="screen-game" class="screen flex-col h-screen">
 
     <!-- HEADER -->
-    <div class="shrink-0 px-4 pb-3 bg-[#111827] border-b border-slate-800 safe-top" style="padding-top: max(14px, env(safe-area-inset-top))">
+    <div class="shrink-0 px-4 pb-3 bg-[#111827] border-b border-slate-800 safe-top">
       <div class="flex items-center justify-between mb-2">
         <div>
           <h2 class="text-base font-bold leading-tight">Đoán số đối thủ</h2>
-          <p class="text-[11px] text-slate-500">4 chữ số • Mỗi lượt 30 giây</p>
+          <p class="text-[11px] text-slate-500">4 chữ số • Mỗi lượt 60 giây</p>
         </div>
-        <span id="mode-badge" class="text-[10px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2.5 py-1 rounded-md">Online</span>
+        <div class="flex items-center gap-2">
+          <span id="mode-badge" class="text-[10px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2.5 py-1 rounded-md">Online</span>
+          <button id="btn-pause" onclick="pauseGame()" class="w-7 h-7 flex items-center justify-center bg-slate-800 rounded-md hover:bg-slate-700 transition">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <div class="timer-bar-track flex-1">
           <div id="timer-bar" class="timer-bar-fill" style="width:100%"></div>
         </div>
-        <span id="timer-text" class="text-[11px] font-semibold tabular-nums text-slate-500 w-7 text-right">30s</span>
+        <span id="timer-text" class="text-[11px] font-semibold tabular-nums text-slate-500 w-7 text-right">60s</span>
       </div>
     </div>
 
@@ -176,9 +193,26 @@
     </div>
   </div>
 
+  <!-- ======== MODAL PAUSE ======== -->
+  <div id="modal-pause" class="modal-overlay fixed inset-0 z-[60] flex items-center justify-center px-6 hidden">
+    <div class="modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50 relative">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="text-slate-400"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+        <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300" id="pause-count">5</div>
+      </div>
+      <h2 class="text-xl font-bold mb-2">Trò chơi tạm dừng</h2>
+      <p class="text-slate-500 text-sm mb-8 px-2" id="pause-status-text">Cả hai cùng nhấn Tiếp tục để chơi tiếp.</p>
+      
+      <button id="btn-resume" class="btn-primary w-full py-4 relative group overflow-hidden" onclick="resumeGame()">
+        <span id="btn-resume-text" class="relative z-10 w-full inline-block">Tiếp tục chơi</span>
+        <div id="resume-progress" class="absolute bottom-0 left-0 h-1 bg-white/20 w-0 transition-all duration-1000 linear z-0"></div>
+      </button>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-  <script src="game.js?v=4"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>

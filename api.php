@@ -24,6 +24,14 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
+
+    // ─── Auto Migration for Pause Feature ───
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN is_paused TINYINT(1) DEFAULT 0");
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN player1_pauses INT DEFAULT 5");
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN player2_pauses INT DEFAULT 5");
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN turn_pause_time BIGINT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p1 BIGINT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p2 BIGINT DEFAULT NULL");
 } catch (PDOException $e) {
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit;
@@ -56,6 +64,12 @@ switch ($action) {
         break;
     case 'cancel_room':
         cancelRoom();
+        break;
+    case 'pause_game':
+        pauseGame();
+        break;
+    case 'resume_game':
+        resumeGame();
         break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
@@ -91,7 +105,7 @@ function createRoom()
     if (!$roomId)
         return error('Không thể tạo phòng, thử lại sau');
 
-    $stmt = $pdo->prepare("INSERT INTO rooms (id, player1_id, status) VALUES (?, ?, 'waiting')");
+    $stmt = $pdo->prepare("INSERT INTO rooms (id, player1_id, status, player1_pauses, player2_pauses) VALUES (?, ?, 'waiting', 5, 5)");
     $stmt->execute([$roomId, $playerId]);
 
     echo json_encode(['ok' => true, 'room_id' => $roomId]);
@@ -249,6 +263,19 @@ function getRoom()
     if (!$room)
         return error('Phòng không tồn tại');
 
+    // Clean up expired resume requests (> 10s)
+    $now = round(microtime(true) * 1000);
+    if ($room['is_paused']) {
+        if ($room['resume_request_p1'] && ($now - $room['resume_request_p1']) > 10000) {
+            $pdo->exec("UPDATE rooms SET resume_request_p1 = NULL WHERE id = " . (int)$roomId);
+            $room['resume_request_p1'] = null;
+        }
+        if ($room['resume_request_p2'] && ($now - $room['resume_request_p2']) > 10000) {
+            $pdo->exec("UPDATE rooms SET resume_request_p2 = NULL WHERE id = " . (int)$roomId);
+            $room['resume_request_p2'] = null;
+        }
+    }
+
     echo json_encode([
         'ok' => true,
         'room' => [
@@ -262,6 +289,11 @@ function getRoom()
             'status' => $room['status'],
             'winner' => $room['winner'],
             'my_secret' => ($room['player1_id'] === $playerId) ? $room['player1_secret'] : (($room['player2_id'] === $playerId) ? $room['player2_secret'] : null),
+            'is_paused' => $room['is_paused'] ? true : false,
+            'player1_pauses' => (int)$room['player1_pauses'],
+            'player2_pauses' => (int)$room['player2_pauses'],
+            'resume_request_p1' => $room['resume_request_p1'] ? (int)$room['resume_request_p1'] : null,
+            'resume_request_p2' => $room['resume_request_p2'] ? (int)$room['resume_request_p2'] : null,
         ]
     ]);
 }
@@ -297,6 +329,92 @@ function cancelRoom()
 
     $stmt = $pdo->prepare("DELETE FROM rooms WHERE id = ? AND (player1_id = ? OR player2_id = ?)");
     $stmt->execute([$roomId, $playerId, $playerId]);
+
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// TẠM DỪNG GAME
+// ============================================
+function pauseGame()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    
+    if (!$room || $room['status'] !== 'playing') return error('Không thể tạm dừng lúc này');
+    if ($room['is_paused']) return error('Trò chơi đang dừng rồi');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng này');
+
+    $pausesLeft = (int)$room[$myRole . '_pauses'];
+    if ($pausesLeft <= 0) return error('Bạn đã hết số lần tạm dừng (tối đa 5 lần)');
+
+    $now = round(microtime(true) * 1000);
+    $stmt = $pdo->prepare("UPDATE rooms SET 
+        is_paused = 1,
+        {$myRole}_pauses = {$myRole}_pauses - 1,
+        turn_pause_time = ?,
+        resume_request_p1 = NULL,
+        resume_request_p2 = NULL
+        WHERE id = ?");
+    $stmt->execute([$now, $roomId]);
+
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// TIẾP TỤC GAME
+// ============================================
+function resumeGame()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    
+    if (!$room || $room['status'] !== 'playing') return error('Không hợp lệ');
+    if (!$room['is_paused']) return error('Trò chơi đang không bị dừng');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng này');
+
+    $now = round(microtime(true) * 1000);
+    $reqField = 'resume_request_' . ($myRole === 'player1' ? 'p1' : 'p2');
+    $otherReqField = 'resume_request_' . ($myRole === 'player1' ? 'p2' : 'p1');
+
+    // Cập nhật request của tôi
+    $stmt = $pdo->prepare("UPDATE rooms SET $reqField = ? WHERE id = ?");
+    $stmt->execute([$now, $roomId]);
+
+    // Lấy lại dữ liệu xem người kia đã request chưa
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $updatedRoom = $stmt->fetch();
+
+    $otherTime = $updatedRoom[$otherReqField];
+    if ($otherTime && ($now - $otherTime) <= 10000) {
+        $pauseDuration = $now - $updatedRoom['turn_pause_time'];
+        
+        $stmt = $pdo->prepare("UPDATE rooms SET 
+            is_paused = 0,
+            turn_start_time = turn_start_time + ?,
+            turn_pause_time = NULL,
+            resume_request_p1 = NULL,
+            resume_request_p2 = NULL
+            WHERE id = ?");
+        $stmt->execute([$pauseDuration, $roomId]);
+    }
 
     echo json_encode(['ok' => true]);
 }
