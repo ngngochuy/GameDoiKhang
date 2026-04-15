@@ -605,31 +605,34 @@ window.addEventListener('DOMContentLoaded', async () => {
       myRole = (data.room.player1_id === myPlayerId) ? 'player1' : 'player2';
       
       if (data.room.status === 'waiting') {
-        if (!data.room.player2_id) {
-          showScreen('waiting');
-          document.getElementById('waiting-room-code').textContent = roomId;
-          startPolling('waitForPlayer');
+        showScreen('waiting');
+        document.getElementById('waiting-room-code').textContent = roomId;
+        startPolling('waitForPlayer');
+      } else if (data.room.status === 'setSecret') {
+        if (data.room.my_secret) {
+          mySecret = data.room.my_secret;
+          showScreen('secret');
+          document.getElementById('secret-waiting').classList.remove('hidden');
+          document.getElementById('btn-set-secret').classList.add('hidden');
+          startPolling('checkSecret');
         } else {
-          if (data.room.my_secret) {
-            mySecret = data.room.my_secret;
-            showScreen('secret');
-            document.getElementById('secret-waiting').classList.remove('hidden');
-            document.getElementById('btn-set-secret').classList.add('hidden');
-            startPolling('checkSecret');
-          } else {
-            showScreen('secret');
-            document.getElementById('secret-waiting').classList.add('hidden');
-            document.getElementById('btn-set-secret').classList.remove('hidden');
-            document.getElementById('btn-set-secret').disabled = false;
-            document.getElementById('btn-set-secret').textContent = '🔒 Xác Nhận';
-            startPolling('checkSecret');
-          }
+          showScreen('secret');
+          document.getElementById('secret-waiting').classList.add('hidden');
+          document.getElementById('btn-set-secret').classList.remove('hidden');
+          document.getElementById('btn-set-secret').disabled = false;
+          document.getElementById('btn-set-secret').textContent = '🔒 Xác Nhận';
+          startPolling('checkSecret');
         }
       } else if (data.room.status === 'playing') {
         enterGameScreen(data.room);
         startPolling('poll');
+      } else {
+        showToast('Lỗi trạng thái phòng: ' + data.room.status, 'error');
+        resetState();
+        showScreen('lobby');
       }
     } else {
+      showToast('Không thể kết nối lại: ' + (data.error || 'Server error'), 'error');
       resetState();
       showScreen('lobby');
     }
