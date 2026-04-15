@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Game Giải Mã Số - Đối kháng Real-time 2 người chơi" />
+  <title>🎮 Giải Mã Số — Đối Kháng</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark: { 900: '#0f0f1a', 800: '#161625', 700: '#1e1e33' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-dark-900 text-white">
+
+  <!-- ============================================ -->
+  <!-- SCREEN 1: LOBBY                              -->
+  <!-- ============================================ -->
+  <div id="screen-lobby" class="screen active flex-col items-center justify-center h-screen px-6">
+    <!-- Logo / Title -->
+    <div class="text-center mb-10">
+      <div class="text-6xl mb-4">🔐</div>
+      <h1 class="text-3xl font-black text-gradient mb-2">Giải Mã Số</h1>
+      <p class="text-sm text-gray-400">Đối kháng Real-time • 2 Người chơi</p>
+    </div>
+
+    <!-- Buttons -->
+    <div class="w-full max-w-xs space-y-4">
+      <button id="btn-create" class="btn-primary w-full py-4 text-lg"
+              onclick="createRoom()">
+        ✨ Tạo Phòng Mới
+      </button>
+
+      <div class="flex items-center gap-3 my-2">
+        <div class="flex-1 h-px bg-white/10"></div>
+        <span class="text-xs text-gray-500 uppercase tracking-wider">hoặc</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+
+      <!-- Join Room -->
+      <div class="glass-card p-4">
+        <p class="text-xs text-gray-400 mb-3 text-center">Nhập mã phòng 3 chữ số</p>
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <input id="join-d1" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          <input id="join-d2" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          <input id="join-d3" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        </div>
+        <button id="btn-join" class="btn-secondary w-full py-3 text-base"
+                onclick="joinRoom()">
+          🚀 Vào Phòng
+        </button>
+      </div>
+
+      <p id="lobby-error" class="text-red-400 text-sm text-center mt-2 hidden"></p>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN 2: WAITING ROOM                       -->
+  <!-- ============================================ -->
+  <div id="screen-waiting" class="screen flex-col items-center justify-center h-screen px-6">
+    <div class="text-center">
+      <div class="text-5xl mb-6">⏳</div>
+      <h2 class="text-xl font-bold mb-2">Đang chờ đối thủ</h2>
+      <p class="text-gray-400 text-sm mb-6">Chia sẻ mã phòng cho bạn bè<span class="waiting-dots"></span></p>
+
+      <div class="inline-block mb-8">
+        <p class="text-xs text-gray-500 mb-2">MÃ PHÒNG</p>
+        <div class="room-badge text-3xl tracking-[8px] py-3 px-6" id="waiting-room-code">---</div>
+      </div>
+
+      <div>
+        <button class="btn-secondary px-6 py-2.5 text-sm" onclick="cancelRoom()">
+          ← Trở về
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN 3: SET SECRET                         -->
+  <!-- ============================================ -->
+  <div id="screen-secret" class="screen flex-col items-center justify-center h-screen px-6">
+    <div class="text-center w-full max-w-xs">
+      <div class="text-5xl mb-4">🎯</div>
+      <h2 class="text-xl font-bold mb-2">Đặt Số Bí Mật</h2>
+      <p class="text-gray-400 text-sm mb-8">Chọn 4 chữ số để đối thủ giải mã</p>
+
+      <div class="flex items-center justify-center gap-3 mb-6">
+        <input id="secret-d1" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="secret-d2" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="secret-d3" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="secret-d4" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+      </div>
+
+      <button id="btn-set-secret" class="btn-primary w-full py-4 text-lg" onclick="setSecret()">
+        🔒 Xác Nhận
+      </button>
+
+      <p id="secret-error" class="text-red-400 text-sm text-center mt-3 hidden"></p>
+      <p id="secret-waiting" class="text-gray-400 text-sm text-center mt-3 hidden">
+        Đang chờ đối thủ đặt số<span class="waiting-dots"></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN 4: GAME BOARD                         -->
+  <!-- ============================================ -->
+  <div id="screen-game" class="screen flex-col h-screen">
+
+    <!-- HEADER -->
+    <div class="shrink-0 px-4 pt-3 pb-2 bg-dark-900/90 backdrop-blur-lg border-b border-white/5">
+      <!-- Top row -->
+      <div class="flex items-center justify-between mb-2">
+        <div class="room-badge text-xs" id="game-room-code">---</div>
+        <div id="turn-label" class="text-xs font-semibold px-3 py-1 rounded-full bg-violet-500/15 text-violet-300">
+          Lượt của bạn
+        </div>
+        <div id="timer-text" class="text-sm font-bold tabular-nums text-gray-300">30s</div>
+      </div>
+      <!-- Timer bar -->
+      <div class="timer-bar-track">
+        <div id="timer-bar" class="timer-bar-fill" style="width:100%"></div>
+      </div>
+      <!-- Player labels -->
+      <div class="flex items-center justify-between mt-2 text-[11px]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span id="p1-label" class="text-gray-400">Bạn</span>
+          <span id="p1-score" class="text-gray-500">(0 lượt)</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span id="p2-score" class="text-gray-500">(0 lượt)</span>
+          <span id="p2-label" class="text-gray-400">Đối thủ</span>
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY AREA -->
+    <div id="history-area" class="flex-1 overflow-y-auto history-scroll px-3 py-3 space-y-2">
+      <!-- Empty state -->
+      <div id="history-empty" class="flex flex-col items-center justify-center h-full opacity-40">
+        <div class="text-4xl mb-3">🕵️</div>
+        <p class="text-sm text-gray-500">Bắt đầu đoán số bí mật!</p>
+      </div>
+      <!-- Guess items will be inserted here -->
+    </div>
+
+    <!-- FIXED BOTTOM INPUT AREA -->
+    <div class="shrink-0 px-4 pt-3 pb-4 bg-dark-900/95 backdrop-blur-lg border-t border-white/5 safe-bottom">
+      <div class="flex items-center justify-center gap-2.5 mb-3">
+        <input id="guess-d1" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="guess-d2" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="guess-d3" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+        <input id="guess-d4" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+      </div>
+      <button id="btn-guess" class="btn-primary w-full py-4 text-lg" onclick="submitGuess()">
+        ✅ Kiểm Tra
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: GAME OVER                             -->
+  <!-- ============================================ -->
+  <div id="modal-result" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center px-6 hidden">
+    <div class="modal-content glass-card-strong p-8 w-full max-w-sm text-center">
+      <div id="result-emoji" class="text-6xl mb-4">🏆</div>
+      <h2 id="result-title" class="text-2xl font-black mb-2">Chiến Thắng!</h2>
+      <p id="result-desc" class="text-gray-400 text-sm mb-2"></p>
+      <div id="result-secret" class="text-sm text-gray-500 mb-6"></div>
+      <button class="btn-primary w-full py-4 text-lg" onclick="backToLobby()">
+        🏠 Về Sảnh
+      </button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
