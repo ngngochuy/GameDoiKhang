@@ -50,6 +50,10 @@
 
       <p id="lobby-error" class="text-red-500 text-sm text-center mt-2 hidden"></p>
 
+      <button class="mt-6 text-xs text-gray-400 underline mx-auto block" 
+        onclick="localStorage.clear();sessionStorage.clear();if('caches' in window){caches.keys().then(n=>n.forEach(k=>caches.delete(k)))};location.reload(true);">
+        🗑️ Xoá Cache
+      </button>
     </div>
   </div>
 
