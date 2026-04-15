@@ -29,8 +29,11 @@ try {
     exit;
 }
 
+// ─── Parse JSON body once ───
+$_JSON = json_decode(file_get_contents('php://input'), true) ?? [];
+
 // ─── Router ───
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+$action = $_GET['action'] ?? $_POST['action'] ?? $_JSON['action'] ?? '';
 
 switch ($action) {
     case 'create_room':
@@ -323,13 +326,12 @@ function checkGuess($guess, $secret)
 // ============================================
 function getParam($name, $default = null)
 {
+    global $_JSON;
     if (isset($_POST[$name]))
         return $_POST[$name];
     if (isset($_GET[$name]))
         return $_GET[$name];
-    // JSON body
-    $json = json_decode(file_get_contents('php://input'), true);
-    return $json[$name] ?? $default;
+    return $_JSON[$name] ?? $default;
 }
 
 function error($msg)
