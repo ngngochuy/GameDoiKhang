@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="description" content="Game Giải Mã Số - Đối kháng Real-time 2 người chơi" />
   <title>🎮 Giải Mã Số — Đối Kháng</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -29,10 +29,6 @@
         ✨ Tạo Phòng Mới
       </button>
 
-      <!-- LIVE TEST -->
-      <button class="btn-test w-full py-3" onclick="startLiveTest()">
-        ⚡ LIVE TEST (chơi thử 1 mình)
-      </button>
 
       <div class="flex items-center gap-3 my-2">
         <div class="flex-1 h-px bg-gray-200"></div>
@@ -54,8 +50,6 @@
 
       <p id="lobby-error" class="text-red-500 text-sm text-center mt-2 hidden"></p>
 
-      <!-- Clear cache button for testing -->
-      <button class="mt-4 text-xs text-gray-400 underline mx-auto block" onclick="clearCache()">🗑️ Xoá Cache</button>
     </div>
   </div>
 
@@ -99,7 +93,7 @@
   <div id="screen-game" class="screen flex-col h-screen">
 
     <!-- HEADER -->
-    <div class="shrink-0 px-4 pt-3 pb-2 bg-[#1e293b] text-white rounded-b-2xl shadow-lg">
+    <div class="shrink-0 px-4 pb-2 bg-[#1e293b] text-white rounded-b-2xl shadow-lg" style="padding-top: max(12px, env(safe-area-inset-top))">
       <div class="flex items-center justify-between mb-1.5">
         <div>
           <h2 class="text-lg font-extrabold leading-tight">Đoán Số Đối Thủ</h2>
