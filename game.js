@@ -24,9 +24,9 @@ let myGuessCount = 0;
 let isLiveTest = false;
 let liveTestSecret = null;
 
-const TURN_DURATION = 30;
+const TURN_DURATION = 60;
 const DIGITS = 4;
-const POLL_MS = 1000; // polling every 1 second
+const POLL_MS = 1000;
 
 // ============================================
 // SCREEN MANAGEMENT
@@ -338,14 +338,16 @@ function startPolling(mode) {
           isMyTurn = (room.current_turn === myRole);
           updateTurnUI(room);
 
-          // Fetch new guesses
+          // Fetch new guesses — chỉ hiện lịch sử của mình
           const guessData = await api('get_guesses', { room_id: roomId, after_id: lastGuessId });
           if (guessData.guesses && guessData.guesses.length > 0) {
             guessData.guesses.forEach(g => {
-              renderGuess(g);
-              lastGuessId = g.id;
+              lastGuessId = Math.max(lastGuessId, parseInt(g.id));
+              if (g.player === myRole) {
+                renderGuess(g);
+                scrollHistoryToBottom();
+              }
             });
-            scrollHistoryToBottom();
           }
 
           // Check finished
@@ -546,20 +548,19 @@ function showToast(msg, type = 'info', duration = 4000) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
 
-  const icons = { error: '❌', warning: '⚠️', success: '✅', info: 'ℹ️' };
+  const icons = { error: '\u2716', warning: '\u26a0', success: '\u2714', info: 'i' };
   const colors = {
-    error:   'bg-red-50 border-red-200 text-red-700',
-    warning: 'bg-amber-50 border-amber-200 text-amber-700',
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    info:    'bg-blue-50 border-blue-200 text-blue-700',
+    error:   'bg-red-500/10 border-red-500/20 text-red-400',
+    warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+    success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+    info:    'bg-blue-500/10 border-blue-500/20 text-blue-400',
   };
 
-  toast.className = `pointer-events-auto w-full max-w-sm flex items-center gap-2.5 px-4 py-3 rounded-2xl border shadow-lg text-sm font-medium ${colors[type] || colors.info}`;
+  toast.className = `pointer-events-auto w-full max-w-sm flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium backdrop-blur-sm ${colors[type] || colors.info}`;
   toast.style.animation = 'toastIn 0.3s ease';
-  toast.innerHTML = `<span class="text-lg shrink-0">${icons[type] || icons.info}</span><span class="flex-1">${msg}</span>`;
+  toast.innerHTML = `<span class="text-sm font-bold shrink-0">${icons[type] || icons.info}</span><span class="flex-1">${msg}</span>`;
 
   container.appendChild(toast);
-
   setTimeout(() => {
     toast.style.animation = 'toastOut 0.3s ease forwards';
     setTimeout(() => toast.remove(), 300);

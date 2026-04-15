@@ -4,55 +4,61 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="description" content="Game Giải Mã Số - Đối kháng Real-time 2 người chơi" />
-  <title>🎮 Giải Mã Số — Đối Kháng</title>
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Giải Mã Số — Đối Kháng</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      theme: { extend: { colors: { brand: '#2563eb' } } }
+      theme: { extend: { colors: { brand: '#3b82f6' } } }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 
-<body class="bg-[#f0f2f5] text-gray-900">
+<body>
 
   <!-- ======== SCREEN 1: LOBBY ======== -->
   <div id="screen-lobby" class="screen active flex-col items-center justify-center h-screen px-6">
-    <div class="text-center mb-10">
-      <div class="text-6xl mb-4">🔐</div>
-      <h1 class="text-3xl font-black text-gray-800 mb-1">Giải Mã Số</h1>
-      <p class="text-sm text-gray-400">Đối kháng Real-time • 2 Người chơi</p>
+    <div class="text-center mb-12">
+      <!-- Logo icon dùng CSS, không emoji -->
+      <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-blue">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Giải Mã Số</h1>
+      <p class="text-sm text-slate-500">Đối kháng 2 người chơi</p>
     </div>
 
-    <div class="w-full max-w-xs space-y-4">
-      <button id="btn-create" class="btn-primary w-full py-4 text-lg" onclick="createRoom()">
-        ✨ Tạo Phòng Mới
+    <div class="w-full max-w-xs space-y-3">
+      <button id="btn-create" class="btn-primary w-full py-3.5" onclick="createRoom()">
+        Tạo phòng mới
       </button>
 
-
-      <div class="flex items-center gap-3 my-2">
-        <div class="flex-1 h-px bg-gray-200"></div>
-        <span class="text-xs text-gray-400 uppercase tracking-wider">hoặc</span>
-        <div class="flex-1 h-px bg-gray-200"></div>
+      <div class="flex items-center gap-3 my-3">
+        <div class="flex-1 h-px bg-slate-800"></div>
+        <span class="text-[11px] text-slate-600 uppercase tracking-widest">hoặc</span>
+        <div class="flex-1 h-px bg-slate-800"></div>
       </div>
 
-      <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <p class="text-xs text-gray-400 mb-3 text-center">Nhập mã phòng 3 chữ số</p>
-        <div class="flex items-center justify-center gap-2 mb-4">
-          <input id="join-d1" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-          <input id="join-d2" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-          <input id="join-d3" class="secret-input w-14 h-16" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+      <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
+        <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
+        <div class="flex items-center justify-center gap-2 mb-3">
+          <input id="join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          <input id="join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          <input id="join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         </div>
-        <button id="btn-join" class="btn-secondary w-full py-3 text-base" onclick="joinRoom()">
-          🚀 Vào Phòng
+        <button id="btn-join" class="btn-outline w-full py-3" onclick="joinRoom()">
+          Vào phòng
         </button>
       </div>
 
-      <p id="lobby-error" class="text-red-500 text-sm text-center mt-2 hidden"></p>
+      <p id="lobby-error" class="text-red-400 text-xs text-center mt-2 hidden"></p>
 
-      <button class="mt-6 text-xs text-gray-400 underline mx-auto block" 
+      <button class="mt-4 text-[11px] text-slate-600 mx-auto block hover:text-slate-400 transition-colors"
         onclick="localStorage.clear();sessionStorage.clear();window.location.href=window.location.pathname+'?t='+Date.now()">
-        🗑️ Xoá Cache
+        Xoá cache
       </button>
     </div>
   </div>
@@ -60,34 +66,42 @@
   <!-- ======== SCREEN 2: WAITING ======== -->
   <div id="screen-waiting" class="screen flex-col items-center justify-center h-screen px-6">
     <div class="text-center">
-      <div class="text-5xl mb-6">⏳</div>
-      <h2 class="text-xl font-bold mb-2 text-gray-800">Đang chờ đối thủ</h2>
-      <p class="text-gray-400 text-sm mb-6">Chia sẻ mã phòng cho bạn bè<span class="waiting-dots"></span></p>
-      <div class="inline-block mb-8">
-        <p class="text-xs text-gray-400 mb-2">MÃ PHÒNG</p>
-        <div class="room-badge text-3xl tracking-[8px] py-3 px-6" id="waiting-room-code">---</div>
+      <!-- Pulse ring indicator -->
+      <div class="w-14 h-14 mx-auto mb-8 rounded-full bg-blue-500/10 flex items-center justify-center pulse-ring">
+        <div class="w-4 h-4 rounded-full bg-blue-500"></div>
       </div>
-      <div>
-        <button class="btn-secondary px-6 py-2.5 text-sm" onclick="cancelRoom()">← Trở về</button>
+      <h2 class="text-lg font-semibold mb-1">Đang chờ đối thủ</h2>
+      <p class="text-slate-500 text-sm mb-8">Gửi mã phòng cho bạn bè<span class="waiting-dots"></span></p>
+
+      <div class="mb-10">
+        <p class="text-[11px] text-slate-600 uppercase tracking-widest mb-3">Mã phòng</p>
+        <div id="waiting-room-code" class="room-code">---</div>
       </div>
+
+      <button class="btn-outline px-8 py-2.5 text-sm" onclick="cancelRoom()">Trở về</button>
     </div>
   </div>
 
   <!-- ======== SCREEN 3: SET SECRET ======== -->
   <div id="screen-secret" class="screen flex-col items-center justify-center h-screen px-6">
     <div class="text-center w-full max-w-xs">
-      <div class="text-5xl mb-4">🎯</div>
-      <h2 class="text-xl font-bold mb-2 text-gray-800">Đặt Số Bí Mật</h2>
-      <p class="text-gray-400 text-sm mb-8">Chọn 4 chữ số để đối thủ giải mã</p>
-      <div class="flex items-center justify-center gap-3 mb-6">
+      <div class="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h2 class="text-lg font-semibold mb-1">Đặt số bí mật</h2>
+      <p class="text-slate-500 text-sm mb-8">Chọn 4 chữ số để đối thủ giải mã</p>
+
+      <div class="flex items-center justify-center gap-3 mb-5">
         <input id="secret-d1" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="secret-d2" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="secret-d3" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="secret-d4" class="secret-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
       </div>
-      <button id="btn-set-secret" class="btn-primary w-full py-4 text-lg" onclick="setSecret()">🔒 Xác Nhận</button>
-      <p id="secret-error" class="text-red-500 text-sm text-center mt-3 hidden"></p>
-      <p id="secret-waiting" class="text-gray-400 text-sm text-center mt-3 hidden">
+      <button id="btn-set-secret" class="btn-primary w-full py-3.5" onclick="setSecret()">Xác nhận</button>
+      <p id="secret-error" class="text-red-400 text-xs text-center mt-3 hidden"></p>
+      <p id="secret-waiting" class="text-slate-500 text-sm text-center mt-4 hidden">
         Đang chờ đối thủ đặt số<span class="waiting-dots"></span>
       </p>
     </div>
@@ -97,60 +111,62 @@
   <div id="screen-game" class="screen flex-col h-screen">
 
     <!-- HEADER -->
-    <div class="shrink-0 px-4 pb-2 bg-[#1e293b] text-white rounded-b-2xl shadow-lg" style="padding-top: max(12px, env(safe-area-inset-top))">
-      <div class="flex items-center justify-between mb-1.5">
+    <div class="shrink-0 px-4 pb-3 bg-[#111827] border-b border-slate-800 safe-top" style="padding-top: max(14px, env(safe-area-inset-top))">
+      <div class="flex items-center justify-between mb-2">
         <div>
-          <h2 class="text-lg font-extrabold leading-tight">Đoán Số Đối Thủ</h2>
-          <p class="text-[11px] text-gray-300 opacity-70">Đối thủ đã chọn số (4 chữ số)</p>
+          <h2 class="text-base font-bold leading-tight">Đoán số đối thủ</h2>
+          <p class="text-[11px] text-slate-500">4 chữ số • Mỗi lượt 30 giây</p>
         </div>
-        <div class="flex items-center gap-2">
-          <span id="mode-badge" class="btn-test text-[11px] py-1 px-2.5 cursor-default">ONLINE</span>
-        </div>
+        <span id="mode-badge" class="text-[10px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2.5 py-1 rounded-md">Online</span>
       </div>
-      <!-- Timer -->
-      <div class="flex items-center gap-2 mt-1">
+      <div class="flex items-center gap-2">
         <div class="timer-bar-track flex-1">
           <div id="timer-bar" class="timer-bar-fill" style="width:100%"></div>
         </div>
-        <span id="timer-text" class="text-xs font-bold tabular-nums text-gray-300 w-8 text-right">30s</span>
+        <span id="timer-text" class="text-[11px] font-semibold tabular-nums text-slate-500 w-7 text-right">30s</span>
       </div>
     </div>
 
-    <!-- HISTORY AREA -->
-    <div id="history-area" class="flex-1 overflow-y-auto history-scroll px-4 py-3 space-y-2.5">
-      <div id="history-empty" class="flex flex-col items-center justify-center h-full opacity-40">
-        <div class="text-4xl mb-3">🕵️</div>
-        <p class="text-sm text-gray-400">Bắt đầu đoán số bí mật!</p>
+    <!-- HISTORY -->
+    <div id="history-area" class="flex-1 overflow-y-auto history-scroll px-4 py-3 space-y-2">
+      <div id="history-empty" class="flex flex-col items-center justify-center h-full">
+        <div class="w-10 h-10 mb-3 rounded-xl bg-slate-800 flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </div>
+        <p class="text-sm text-slate-600">Nhập 4 số và bấm kiểm tra</p>
       </div>
     </div>
 
-    <!-- FIXED BOTTOM INPUT -->
-    <div class="shrink-0 px-4 pt-3 pb-4 bg-white border-t border-gray-100 safe-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
-      <div class="flex items-center justify-center gap-3 mb-3">
+    <!-- INPUT AREA -->
+    <div class="shrink-0 px-4 pt-3 pb-4 bg-[#111827] border-t border-slate-800 safe-bottom">
+      <div class="flex items-center justify-center gap-2.5 mb-3">
         <input id="guess-d1" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="guess-d2" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="guess-d3" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
         <input id="guess-d4" class="otp-input" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
       </div>
-      <button id="btn-guess" class="btn-primary w-full py-4 text-lg tracking-wider" onclick="submitGuess()">
-        KIỂM TRA
+      <button id="btn-guess" class="btn-primary w-full py-3.5 tracking-wide" onclick="submitGuess()">
+        Kiểm tra
       </button>
     </div>
   </div>
 
-  <!-- ======== MODAL: RESULT ======== -->
+  <!-- ======== MODAL ======== -->
   <div id="modal-result" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center px-6 hidden">
-    <div class="modal-content bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl">
-      <div id="result-emoji" class="text-6xl mb-4">🏆</div>
-      <h2 id="result-title" class="text-2xl font-black mb-2 text-gray-800">Chiến Thắng!</h2>
-      <p id="result-desc" class="text-gray-400 text-sm mb-2"></p>
-      <div id="result-secret" class="text-sm text-gray-500 mb-6"></div>
-      <button class="btn-primary w-full py-4 text-lg" onclick="backToLobby()">🏠 Về Sảnh</button>
+    <div class="modal-content bg-[#111827] rounded-2xl p-7 w-full max-w-sm text-center border border-slate-800">
+      <div id="result-emoji" class="text-5xl mb-3"></div>
+      <h2 id="result-title" class="text-xl font-bold mb-1"></h2>
+      <p id="result-desc" class="text-slate-500 text-sm mb-1"></p>
+      <div id="result-secret" class="text-sm text-slate-400 mb-6"></div>
+      <button class="btn-primary w-full py-3.5" onclick="backToLobby()">Về sảnh chính</button>
     </div>
   </div>
-  <!-- ======== TOAST CONTAINER ======== -->
+
+  <!-- TOAST -->
   <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-  <script src="game.js?v=2"></script>
+  <script src="game.js?v=3"></script>
 </body>
 </html>
