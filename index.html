@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="description" content="Game Giải Mã Số - Đối kháng Real-time 2 người chơi" />
   <meta name="theme-color" content="#0a0e1a" />
   <title>Giải Mã Số — Đối Kháng</title>
@@ -21,10 +23,12 @@
   <div id="screen-lobby" class="screen active flex-col items-center justify-center h-screen px-6">
     <div class="text-center mb-12">
       <!-- Logo icon dùng CSS, không emoji -->
-      <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-blue">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      <div
+        class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-blue">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+          stroke-linecap="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </div>
       <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Giải Mã Số</h1>
@@ -45,9 +49,12 @@
       <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
         <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
         <div class="flex items-center justify-center gap-2 mb-3">
-          <input id="join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-          <input id="join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-          <input id="join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          <input id="join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+            maxlength="1" />
+          <input id="join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+            maxlength="1" />
+          <input id="join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+            maxlength="1" />
         </div>
         <button id="btn-join" class="btn-outline w-full py-3" onclick="joinRoom()">
           Vào phòng
@@ -67,9 +74,9 @@
         <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
           <li>Mỗi người đặt 1 số bí mật 4 chữ số.</li>
           <li>Mỗi lượt có 60s để đoán số đối phương.</li>
-          <li>Game báo <b class="text-emerald-400">X ĐÚNG</b> tức là có X chữ số đoán trúng và nằm <b>đúng vị trí</b>.</li>
+          <li>Game báo <b class="text-emerald-400">X ĐÚNG</b> tức là có X chữ số đoán trúng và nằm <b>đúng vị trí</b>.
+          </li>
           <li>Ai đoán trúng cả 4 số (4 ĐÚNG) trước sẽ thắng.</li>
-          <li>Có thể <b>Tạm dừng</b> tối đa 5 lần/ván.</li>
         </ul>
       </div>
     </div>
@@ -97,9 +104,13 @@
   <!-- ======== SCREEN 3: SET SECRET ======== -->
   <div id="screen-secret" class="screen flex-col items-center justify-center h-screen px-6">
     <div class="text-center w-full max-w-xs">
-      <div class="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      <div
+        class="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+          stroke-linecap="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
         </svg>
       </div>
       <h2 class="text-lg font-semibold mb-1">Đặt số bí mật</h2>
@@ -130,9 +141,13 @@
           <p class="text-[11px] text-slate-500">4 chữ số • Mỗi lượt 60 giây</p>
         </div>
         <div class="flex items-center gap-2">
-          <span id="mode-badge" class="text-[10px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2.5 py-1 rounded-md">Online</span>
-          <button id="btn-pause" onclick="pauseGame()" class="w-7 h-7 flex items-center justify-center bg-slate-800 rounded-md hover:bg-slate-700 transition">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          <span id="mode-badge"
+            class="text-[10px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2.5 py-1 rounded-md">Online</span>
+          <button id="btn-pause" onclick="pauseGame()"
+            class="w-7 h-7 flex items-center justify-center bg-slate-800 rounded-md hover:bg-slate-700 transition">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+            </svg>
           </button>
         </div>
       </div>
@@ -146,9 +161,12 @@
 
     <!-- MY SECRET -->
     <div id="my-secret-container" class="shrink-0 px-4 pt-4 pb-1 hidden">
-      <div class="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-md shadow-lg shadow-indigo-500/5">
+      <div
+        class="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-md shadow-lg shadow-indigo-500/5">
         <!-- Glow top edge -->
-        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-50"></div>
+        <div
+          class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-50">
+        </div>
         <p class="text-[10px] text-indigo-300/80 uppercase tracking-widest mb-2 font-semibold">Mật mã của bạn</p>
         <div class="flex gap-2.5" id="my-secret-display">
           <!-- Filled by JS -->
@@ -161,7 +179,8 @@
       <div id="history-empty" class="flex flex-col items-center justify-center h-full">
         <div class="w-10 h-10 mb-3 rounded-xl bg-slate-800 flex items-center justify-center">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
           </svg>
         </div>
         <p class="text-sm text-slate-600">Nhập 4 số và bấm kiểm tra</p>
@@ -195,24 +214,33 @@
 
   <!-- ======== MODAL PAUSE ======== -->
   <div id="modal-pause" class="modal-overlay fixed inset-0 z-[60] flex items-center justify-center px-6 hidden">
-    <div class="modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
-      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50 relative">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="text-slate-400"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-        <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300" id="pause-count">5</div>
+    <div
+      class="modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+      <div
+        class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50 relative">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="text-slate-400">
+          <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+        </svg>
+        <div
+          class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300"
+          id="pause-count">5</div>
       </div>
       <h2 class="text-xl font-bold mb-2">Trò chơi tạm dừng</h2>
       <p class="text-slate-500 text-sm mb-8 px-2" id="pause-status-text">Cả hai cùng nhấn Tiếp tục để chơi tiếp.</p>
-      
+
       <button id="btn-resume" class="btn-primary w-full py-4 relative group overflow-hidden" onclick="resumeGame()">
         <span id="btn-resume-text" class="relative z-10 w-full inline-block">Tiếp tục chơi</span>
-        <div id="resume-progress" class="absolute bottom-0 left-0 h-1 bg-white/20 w-0 transition-all duration-1000 linear z-0"></div>
+        <div id="resume-progress"
+          class="absolute bottom-0 left-0 h-1 bg-white/20 w-0 transition-all duration-1000 linear z-0"></div>
       </button>
     </div>
   </div>
 
   <!-- TOAST -->
-  <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
+  <div id="toast-container"
+    class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
   <script src="game.js?v=5"></script>
 </body>
+
 </html>
