@@ -600,18 +600,25 @@ window.addEventListener('DOMContentLoaded', async () => {
       myRole = (data.room.player1_id === myPlayerId) ? 'player1' : 'player2';
       
       if (data.room.status === 'waiting') {
-        showScreen('waiting');
-        document.getElementById('waiting-room-code').textContent = roomId;
-        startPolling('waitForPlayer');
-      } else if (data.room.status === 'setSecret') {
-        if (data.room.my_secret) {
-          mySecret = data.room.my_secret;
-          showScreen('secret');
-          document.getElementById('secret-waiting').classList.remove('hidden');
-          startPolling('checkSecret');
+        if (!data.room.player2_id) {
+          showScreen('waiting');
+          document.getElementById('waiting-room-code').textContent = roomId;
+          startPolling('waitForPlayer');
         } else {
-          showScreen('secret');
-          startPolling('checkSecret');
+          if (data.room.my_secret) {
+            mySecret = data.room.my_secret;
+            showScreen('secret');
+            document.getElementById('secret-waiting').classList.remove('hidden');
+            document.getElementById('btn-set-secret').classList.add('hidden');
+            startPolling('checkSecret');
+          } else {
+            showScreen('secret');
+            document.getElementById('secret-waiting').classList.add('hidden');
+            document.getElementById('btn-set-secret').classList.remove('hidden');
+            document.getElementById('btn-set-secret').disabled = false;
+            document.getElementById('btn-set-secret').textContent = '🔒 Xác Nhận';
+            startPolling('checkSecret');
+          }
         }
       } else if (data.room.status === 'playing') {
         enterGameScreen(data.room);
