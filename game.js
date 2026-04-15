@@ -129,11 +129,12 @@ async function createRoom() {
       return;
     }
 
-    roomId = data.room_id;
+    roomId = String(data.room_id);
     myRole = 'player1';
     isLiveTest = false;
 
     document.getElementById('waiting-room-code').textContent = roomId;
+    console.log('Room created:', roomId);
     showScreen('waiting');
     startPolling('waitForPlayer');
   } catch (err) {
@@ -632,5 +633,34 @@ document.addEventListener('touchend', (e) => {
   if (Date.now() - lastTouchEnd <= 300) e.preventDefault();
   lastTouchEnd = Date.now();
 }, false);
+
+// ============================================
+// CLEAR CACHE 
+// ============================================
+function clearCache() {
+  localStorage.clear();
+  sessionStorage.clear();
+
+  // Unregister service workers
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+  }
+
+  // Clear caches API
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    });
+  }
+
+  // Re-generate player ID
+  myPlayerId = 'p_' + Math.random().toString(36).substring(2, 12);
+  localStorage.setItem('gms_player_id', myPlayerId);
+
+  showToast('Đã xoá cache! Trang sẽ reload...', 'success');
+  setTimeout(() => location.reload(true), 1000);
+}
 
 console.log('🎮 Game Giải Mã Số loaded! Player:', myPlayerId);
