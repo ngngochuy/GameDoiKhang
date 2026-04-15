@@ -127,6 +127,18 @@
       </div>
     </div>
 
+    <!-- MY SECRET -->
+    <div id="my-secret-container" class="shrink-0 px-4 pt-4 pb-1 hidden">
+      <div class="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-md shadow-lg shadow-indigo-500/5">
+        <!-- Glow top edge -->
+        <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-50"></div>
+        <p class="text-[10px] text-indigo-300/80 uppercase tracking-widest mb-2 font-semibold">Mật mã của bạn</p>
+        <div class="flex gap-2.5" id="my-secret-display">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- HISTORY -->
     <div id="history-area" class="flex-1 overflow-y-auto history-scroll px-4 py-3 space-y-2">
       <div id="history-empty" class="flex flex-col items-center justify-center h-full">
@@ -167,6 +179,6 @@
   <!-- TOAST -->
   <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=4"></script>
 </body>
 </html>

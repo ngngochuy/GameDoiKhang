@@ -23,6 +23,7 @@ let lastGuessId = 0;
 let myGuessCount = 0;
 let isLiveTest = false;
 let liveTestSecret = null;
+let mySecret = null;
 
 const TURN_DURATION = 60;
 const DIGITS = 4;
@@ -99,6 +100,8 @@ function startLiveTest() {
 
   document.getElementById('mode-badge').textContent = 'LIVE TEST';
   document.getElementById('mode-badge').style.background = '#16a34a';
+
+  document.getElementById('my-secret-container').classList.add('hidden');
 
   showScreen('game');
   isMyTurn = true;
@@ -205,6 +208,8 @@ async function setSecret() {
   }
 
   const secret = digits.join('');
+  mySecret = secret;
+
   const btn = document.getElementById('btn-set-secret');
   btn.disabled = true;
   btn.textContent = '⏳ Đang gửi...';
@@ -377,6 +382,20 @@ function enterGameScreen(room) {
   showScreen('game');
   document.getElementById('mode-badge').textContent = 'ONLINE';
   document.getElementById('mode-badge').style.background = '#3b82f6';
+  
+  if (room && room.my_secret) mySecret = room.my_secret;
+
+  const secContainer = document.getElementById('my-secret-container');
+  if (isLiveTest) {
+    secContainer.classList.add('hidden');
+  } else if (mySecret) {
+    secContainer.classList.remove('hidden');
+    const display = document.getElementById('my-secret-display');
+    display.innerHTML = mySecret.split('').map(d => 
+      `<div class="w-[34px] h-[40px] rounded-lg bg-[#0a0e1a] border border-indigo-500/40 flex items-center justify-center text-lg font-bold text-indigo-300 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)]">${d}</div>`
+    ).join('');
+  }
+
   isMyTurn = (room.current_turn === myRole);
   updateTurnUI(room);
   focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
@@ -598,6 +617,7 @@ function resetState() {
   myGuessCount = 0;
   isLiveTest = false;
   liveTestSecret = null;
+  mySecret = null;
   if (timerRAF) cancelAnimationFrame(timerRAF);
   stopPolling();
 

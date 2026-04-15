@@ -239,6 +239,7 @@ function getRoom()
 {
     global $pdo;
     $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
     if (!$roomId)
         return error('Missing room_id');
 
@@ -260,6 +261,7 @@ function getRoom()
             'turn_start_time' => $room['turn_start_time'] ? (int) $room['turn_start_time'] : null,
             'status' => $room['status'],
             'winner' => $room['winner'],
+            'my_secret' => ($room['player1_id'] === $playerId) ? $room['player1_secret'] : (($room['player2_id'] === $playerId) ? $room['player2_secret'] : null),
         ]
     ]);
 }
