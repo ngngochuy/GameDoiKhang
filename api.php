@@ -26,12 +26,14 @@ try {
     ]);
 
     // ─── Auto Migration for Pause Feature ───
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN is_paused TINYINT(1) DEFAULT 0");
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN player1_pauses INT DEFAULT 5");
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN player2_pauses INT DEFAULT 5");
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN turn_pause_time BIGINT DEFAULT NULL");
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p1 BIGINT DEFAULT NULL");
-    $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p2 BIGINT DEFAULT NULL");
+    try {
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN is_paused TINYINT(1) DEFAULT 0");
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN player1_pauses INT DEFAULT 5");
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN player2_pauses INT DEFAULT 5");
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN turn_pause_time BIGINT DEFAULT NULL");
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p1 BIGINT DEFAULT NULL");
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p2 BIGINT DEFAULT NULL");
+    } catch (PDOException $e) { /* ignore duplicate col err */ }
 } catch (PDOException $e) {
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit;
