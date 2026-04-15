@@ -73,6 +73,9 @@ switch ($action) {
     case 'resume_game':
         resumeGame();
         break;
+    case 'skip_turn':
+        skipTurn();
+        break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
         echo json_encode(['ok' => true, 'info' => 'API ready']);
@@ -278,6 +281,16 @@ function getRoom()
         }
     }
 
+    // Auto-skip turn if timeout (> 61 seconds to allow network latency)
+    if ($room['status'] === 'playing' && !$room['is_paused'] && $room['turn_start_time']) {
+        if (($now - $room['turn_start_time']) > 61000) {
+            $newTurn = ($room['current_turn'] === 'player1') ? 'player2' : 'player1';
+            $pdo->exec("UPDATE rooms SET current_turn = '$newTurn', turn_start_time = $now WHERE id = " . (int)$roomId);
+            $room['current_turn'] = $newTurn;
+            $room['turn_start_time'] = $now;
+        }
+    }
+
     echo json_encode([
         'ok' => true,
         'room' => [
@@ -417,6 +430,32 @@ function resumeGame()
             WHERE id = ?");
         $stmt->execute([$pauseDuration, $roomId]);
     }
+
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// BỎ LƯỢT GAME
+// ============================================
+function skipTurn()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    
+    if (!$room || $room['status'] !== 'playing' || $room['is_paused']) return error('Chưa thể thao tác');
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if ($room['current_turn'] !== $myRole) return error('Không phải lượt của bạn');
+
+    $newTurn = ($myRole === 'player1') ? 'player2' : 'player1';
+    $now = round(microtime(true) * 1000);
+    $stmt = $pdo->prepare("UPDATE rooms SET current_turn = ?, turn_start_time = ? WHERE id = ?");
+    $stmt->execute([$newTurn, $now, $roomId]);
 
     echo json_encode(['ok' => true]);
 }

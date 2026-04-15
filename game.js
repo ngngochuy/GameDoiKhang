@@ -464,7 +464,7 @@ function startTimerFromServer(serverStart, room) {
     else if (remaining <= 10) timerBar.classList.add('warning');
 
     if (remaining <= 0 && isMyTurn && !isPaused && !isLiveTest) {
-      autoSubmitRandomGuess(); // use original timeout fn
+      skipTurn();
       return;
     }
     
@@ -668,12 +668,23 @@ async function resumeGame() {
   const btn = document.getElementById('btn-resume');
   btn.disabled = true;
   btn.classList.add('opacity-50');
-  const data = await api('resume_game', { room_id: roomId, player_id: myPlayerId });
+  const data = await api('resume_game', { room_id: roomId });
   if (data.error) {
     showToast(data.error, 'error');
     btn.disabled = false;
     btn.classList.remove('opacity-50');
   }
+}
+
+async function skipTurn() {
+  if (!isMyTurn) return;
+  isMyTurn = false;
+  document.getElementById('btn-guess').disabled = true;
+  ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+  showToast('Đã hết thời gian, bạn mất lượt!', 'warning');
+  await api('skip_turn', { room_id: roomId });
 }
 
 function showPauseModal(room) {
