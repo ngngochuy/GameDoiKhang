@@ -422,15 +422,20 @@ function enterGameScreen(room) {
 // UPDATE TURN UI
 // ============================================
 function updateTurnUI(room) {
+  if (room.status !== 'playing') return;
+
   const btnGuess = document.getElementById('btn-guess');
   const inputs = ['guess-d1','guess-d2','guess-d3','guess-d4'];
+  const timerContainer = document.getElementById('timer-container');
 
   if (isMyTurn) {
     btnGuess.disabled = false;
     inputs.forEach(id => document.getElementById(id).disabled = false);
+    if (timerContainer) timerContainer.classList.remove('opacity-0');
   } else {
     btnGuess.disabled = true;
     inputs.forEach(id => document.getElementById(id).disabled = true);
+    if (timerContainer) timerContainer.classList.add('opacity-0');
   }
 
   // Timer
