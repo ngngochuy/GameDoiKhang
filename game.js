@@ -1,47 +1,32 @@
 // ============================================
-// 🔐 Game Giải Mã Số — Firebase Real-time + LIVE TEST
+// 🔐 Game Giải Mã Số — PHP/MySQL Backend
 // ============================================
 
-// ─── Firebase Config ───
-// 👉 THAY THẾ bằng config Firebase thật của bạn
-const firebaseConfig = {
-  apiKey: "AIzaSyDxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  authDomain: "your-project.firebaseapp.com",
-  databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:xxxxxxxxxxxxxx"
-};
-
-let firebaseReady = false;
-try {
-  firebase.initializeApp(firebaseConfig);
-  firebaseReady = true;
-} catch (e) {
-  console.warn('Firebase init error:', e);
-}
-const db = firebaseReady ? firebase.database() : null;
+// ─── API URL ───
+// 👉 Thay đổi URL khi deploy lên VPS
+const API_URL = 'api.php';
 
 // ─── Game State ───
-let myPlayerId = null;
-let mySecret = null;
+let myPlayerId = localStorage.getItem('gms_player_id');
+if (!myPlayerId) {
+  myPlayerId = 'p_' + Math.random().toString(36).substring(2, 12);
+  localStorage.setItem('gms_player_id', myPlayerId);
+}
+
+let myRole = null;       // "player1" or "player2"
 let roomId = null;
-let roomRef = null;
-let guessesRef = null;
-let timerRAF = null;
-let timerInterval = null;
-let turnStartTime = null;
 let isMyTurn = false;
-let guessListenerAttached = false;
+let timerRAF = null;
+let turnStartTime = null;
+let pollInterval = null;
+let lastGuessId = 0;
 let myGuessCount = 0;
-let opponentGuessCount = 0;
 let isLiveTest = false;
 let liveTestSecret = null;
 
 const TURN_DURATION = 30;
 const DIGITS = 4;
-const sessionId = 'p_' + Math.random().toString(36).substring(2, 10);
+const POLL_MS = 1000; // polling every 1 second
 
 // ============================================
 // SCREEN MANAGEMENT
@@ -88,13 +73,27 @@ setupOtpInputs(['secret-d1', 'secret-d2', 'secret-d3', 'secret-d4']);
 setupOtpInputs(['guess-d1', 'guess-d2', 'guess-d3', 'guess-d4']);
 
 // ============================================
-// LIVE TEST MODE (chơi 1 mình, không cần Firebase)
+// API HELPER
+// ============================================
+async function api(action, params = {}) {
+  params.action = action;
+  params.player_id = myPlayerId;
+
+  const resp = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return await resp.json();
+}
+
+// ============================================
+// LIVE TEST MODE
 // ============================================
 function startLiveTest() {
   isLiveTest = true;
-  myPlayerId = 'player1';
+  myRole = 'player1';
 
-  // Random 4-digit secret
   liveTestSecret = '';
   for (let i = 0; i < DIGITS; i++) liveTestSecret += Math.floor(Math.random() * 10);
 
@@ -108,42 +107,115 @@ function startLiveTest() {
     document.getElementById(id).disabled = false;
   });
 
-  startLiveTestTimer();
+  startLocalTimer();
   focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
-
   console.log('🧪 LIVE TEST — Secret:', liveTestSecret);
 }
 
-function startLiveTestTimer() {
-  if (timerRAF) cancelAnimationFrame(timerRAF);
-  turnStartTime = Date.now();
+// ============================================
+// CREATE ROOM
+// ============================================
+async function createRoom() {
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tạo...';
 
-  const timerBar = document.getElementById('timer-bar');
-  const timerText = document.getElementById('timer-text');
+  try {
+    const data = await api('create_room');
+    if (data.error) { showLobbyError(data.error); return; }
 
-  function tick() {
-    const elapsed = (Date.now() - turnStartTime) / 1000;
-    const remaining = Math.max(0, TURN_DURATION - elapsed);
-    const pct = (remaining / TURN_DURATION) * 100;
+    roomId = data.room_id;
+    myRole = 'player1';
+    isLiveTest = false;
 
-    timerBar.style.width = pct + '%';
-    timerText.textContent = Math.ceil(remaining) + 's';
+    document.getElementById('waiting-room-code').textContent = roomId;
+    showScreen('waiting');
 
-    timerBar.classList.remove('warning', 'danger');
-    if (remaining <= 5) timerBar.classList.add('danger');
-    else if (remaining <= 10) timerBar.classList.add('warning');
-
-    if (remaining <= 0) {
-      autoSubmitRandomGuess();
-      return;
-    }
-    timerRAF = requestAnimationFrame(tick);
+    // Start polling for player2
+    startPolling('waitForPlayer');
+  } catch (err) {
+    showLobbyError('Lỗi kết nối server. Kiểm tra API URL hoặc dùng LIVE TEST.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Tạo Phòng Mới';
   }
-  timerRAF = requestAnimationFrame(tick);
 }
 
 // ============================================
-// SUBMIT GUESS (works for both modes)
+// JOIN ROOM
+// ============================================
+async function joinRoom() {
+  const code = ['join-d1','join-d2','join-d3'].map(id => document.getElementById(id).value).join('');
+  if (code.length !== 3 || !/^\d{3}$/.test(code)) {
+    showLobbyError('Vui lòng nhập đủ 3 chữ số');
+    return;
+  }
+
+  const btn = document.getElementById('btn-join');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang kết nối...';
+
+  try {
+    const data = await api('join_room', { room_id: code });
+    if (data.error) { showLobbyError(data.error); return; }
+
+    roomId = data.room_id;
+    myRole = 'player2';
+    isLiveTest = false;
+
+    showScreen('secret');
+    focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
+  } catch (err) {
+    showLobbyError('Lỗi kết nối server.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Vào Phòng';
+  }
+}
+
+// ============================================
+// CANCEL ROOM
+// ============================================
+function cancelRoom() {
+  stopPolling();
+  if (roomId) api('cancel_room', { room_id: roomId });
+  resetState();
+  showScreen('lobby');
+}
+
+// ============================================
+// SET SECRET
+// ============================================
+async function setSecret() {
+  const digits = ['secret-d1','secret-d2','secret-d3','secret-d4'].map(id => document.getElementById(id).value);
+  if (digits.some(d => d === '' || !/^\d$/.test(d))) {
+    showSecretError('Vui lòng nhập đủ 4 chữ số');
+    return;
+  }
+
+  const secret = digits.join('');
+  const btn = document.getElementById('btn-set-secret');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang gửi...';
+
+  try {
+    const data = await api('set_secret', { room_id: roomId, secret: secret });
+    if (data.error) { showSecretError(data.error); btn.disabled = false; btn.textContent = '🔒 Xác Nhận'; return; }
+
+    document.getElementById('secret-waiting').classList.remove('hidden');
+    btn.classList.add('hidden');
+
+    // Start polling for game state
+    startPolling('waitForGame');
+  } catch (err) {
+    showSecretError('Lỗi kết nối server.');
+    btn.disabled = false;
+    btn.textContent = '🔒 Xác Nhận';
+  }
+}
+
+// ============================================
+// SUBMIT GUESS
 // ============================================
 async function submitGuess() {
   if (!isMyTurn && !isLiveTest) return;
@@ -164,49 +236,37 @@ async function submitGuess() {
   const btn = document.getElementById('btn-guess');
   btn.disabled = true;
 
+  // ─── LIVE TEST ───
   if (isLiveTest) {
-    // LIVE TEST mode — local check
-    const result = checkGuess(guess, liveTestSecret);
-    renderGuess({ player: 'player1', digits: guess, correct: result.correct });
+    const result = checkGuessLocal(guess, liveTestSecret);
+    renderGuess({ player: 'player1', digits: guess, correct: result });
     scrollHistoryToBottom();
     clearGuessInputs();
     myGuessCount++;
 
-    if (result.correct === DIGITS) {
+    if (result === DIGITS) {
       showResultModal('🏆', 'Chính Xác!',
         `Bạn đã đoán đúng sau ${myGuessCount} lượt!`,
         `Số bí mật: <span class="text-green-600 font-bold text-xl tracking-wider">${liveTestSecret}</span>`
       );
     } else {
-      // Reset timer for next guess
-      startLiveTestTimer();
+      startLocalTimer();
       btn.disabled = false;
     }
     return;
   }
 
-  // ─── ONLINE MODE ───
+  // ─── ONLINE ───
   try {
-    const secretKey = (myPlayerId === 'player1') ? 'player2Secret' : 'player1Secret';
-    const secretSnap = await roomRef.child(secretKey).once('value');
-    const opponentSecret = secretSnap.val();
-    const result = checkGuess(guess, opponentSecret);
-
-    await guessesRef.push({
-      player: myPlayerId,
-      digits: guess,
-      correct: result.correct,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    });
+    const data = await api('submit_guess', { room_id: roomId, digits: guess });
+    if (data.error) { showLobbyError(data.error); btn.disabled = false; return; }
 
     clearGuessInputs();
 
-    if (result.correct === DIGITS) {
-      await roomRef.update({ status: 'finished', winner: myPlayerId, turnStartTime: null });
-    } else {
-      const nextTurn = (myPlayerId === 'player1') ? 'player2' : 'player1';
-      await roomRef.update({ currentTurn: nextTurn, turnStartTime: firebase.database.ServerValue.TIMESTAMP });
+    if (data.won) {
+      // Thắng! Polling sẽ tự detect status=finished
     }
+    // Polling sẽ cập nhật giao diện
   } catch (err) {
     console.error('Submit error:', err);
     btn.disabled = false;
@@ -214,37 +274,193 @@ async function submitGuess() {
 }
 
 // ============================================
-// CHECK LOGIC — Chỉ trả về tổng số chữ số đúng
+// LOCAL CHECK (LIVE TEST)
 // ============================================
-function checkGuess(guess, secret) {
+function checkGuessLocal(guess, secret) {
   let correct = 0;
-  const guessArr = guess.split('');
-  const secretArr = secret.split('');
   const secretUsed = Array(DIGITS).fill(false);
-
   for (let i = 0; i < DIGITS; i++) {
     for (let j = 0; j < DIGITS; j++) {
       if (secretUsed[j]) continue;
-      if (guessArr[i] === secretArr[j]) {
+      if (guess[i] === secret[j]) {
         correct++;
         secretUsed[j] = true;
         break;
       }
     }
   }
-  return { correct };
+  return correct;
 }
 
 // ============================================
-// RENDER GUESS — Clean style like reference
+// POLLING
+// ============================================
+function startPolling(mode) {
+  stopPolling();
+
+  pollInterval = setInterval(async () => {
+    try {
+      const roomData = await api('get_room', { room_id: roomId });
+      if (roomData.error) { stopPolling(); return; }
+      const room = roomData.room;
+
+      switch (mode) {
+        case 'waitForPlayer':
+          if (room.player2_id) {
+            stopPolling();
+            showScreen('secret');
+            focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
+          }
+          break;
+
+        case 'waitForGame':
+          if (room.status === 'playing') {
+            stopPolling();
+            enterGameScreen(room);
+            startPolling('gameLoop');
+          }
+          break;
+
+        case 'gameLoop':
+          // Update turn
+          const wasMyTurn = isMyTurn;
+          isMyTurn = (room.current_turn === myRole);
+          updateTurnUI(room);
+
+          // Fetch new guesses
+          const guessData = await api('get_guesses', { room_id: roomId, after_id: lastGuessId });
+          if (guessData.guesses && guessData.guesses.length > 0) {
+            guessData.guesses.forEach(g => {
+              renderGuess(g);
+              lastGuessId = g.id;
+            });
+            scrollHistoryToBottom();
+          }
+
+          // Check finished
+          if (room.status === 'finished') {
+            stopPolling();
+            handleGameFinished(room);
+          }
+          break;
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, POLL_MS);
+}
+
+function stopPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+}
+
+// ============================================
+// ENTER GAME SCREEN
+// ============================================
+function enterGameScreen(room) {
+  showScreen('game');
+  document.getElementById('mode-badge').textContent = 'ONLINE';
+  document.getElementById('mode-badge').style.background = '#3b82f6';
+  isMyTurn = (room.current_turn === myRole);
+  updateTurnUI(room);
+  focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
+}
+
+// ============================================
+// UPDATE TURN UI
+// ============================================
+function updateTurnUI(room) {
+  const btnGuess = document.getElementById('btn-guess');
+  const inputs = ['guess-d1','guess-d2','guess-d3','guess-d4'];
+
+  if (isMyTurn) {
+    btnGuess.disabled = false;
+    inputs.forEach(id => document.getElementById(id).disabled = false);
+  } else {
+    btnGuess.disabled = true;
+    inputs.forEach(id => document.getElementById(id).disabled = true);
+  }
+
+  // Timer
+  if (room.turn_start_time) {
+    startTimerFromServer(room.turn_start_time);
+  }
+}
+
+// ============================================
+// TIMER
+// ============================================
+function startTimerFromServer(serverStart) {
+  if (timerRAF) cancelAnimationFrame(timerRAF);
+  turnStartTime = serverStart;
+
+  const timerBar = document.getElementById('timer-bar');
+  const timerText = document.getElementById('timer-text');
+
+  function tick() {
+    const elapsed = (Date.now() - turnStartTime) / 1000;
+    const remaining = Math.max(0, TURN_DURATION - elapsed);
+    timerBar.style.width = (remaining / TURN_DURATION) * 100 + '%';
+    timerText.textContent = Math.ceil(remaining) + 's';
+
+    timerBar.classList.remove('warning', 'danger');
+    if (remaining <= 5) timerBar.classList.add('danger');
+    else if (remaining <= 10) timerBar.classList.add('warning');
+
+    if (remaining <= 0 && isMyTurn) {
+      autoSubmitRandomGuess();
+      return;
+    }
+    timerRAF = requestAnimationFrame(tick);
+  }
+  timerRAF = requestAnimationFrame(tick);
+}
+
+function startLocalTimer() {
+  if (timerRAF) cancelAnimationFrame(timerRAF);
+  turnStartTime = Date.now();
+
+  const timerBar = document.getElementById('timer-bar');
+  const timerText = document.getElementById('timer-text');
+
+  function tick() {
+    const elapsed = (Date.now() - turnStartTime) / 1000;
+    const remaining = Math.max(0, TURN_DURATION - elapsed);
+    timerBar.style.width = (remaining / TURN_DURATION) * 100 + '%';
+    timerText.textContent = Math.ceil(remaining) + 's';
+
+    timerBar.classList.remove('warning', 'danger');
+    if (remaining <= 5) timerBar.classList.add('danger');
+    else if (remaining <= 10) timerBar.classList.add('warning');
+
+    if (remaining <= 0) { autoSubmitRandomGuess(); return; }
+    timerRAF = requestAnimationFrame(tick);
+  }
+  timerRAF = requestAnimationFrame(tick);
+}
+
+// ============================================
+// AUTO-SUBMIT
+// ============================================
+function autoSubmitRandomGuess() {
+  ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
+    document.getElementById(id).value = Math.floor(Math.random() * 10);
+  });
+  submitGuess();
+}
+
+// ============================================
+// RENDER GUESS
 // ============================================
 function renderGuess(guess) {
   const emptyEl = document.getElementById('history-empty');
   if (emptyEl) emptyEl.style.display = 'none';
 
   const historyArea = document.getElementById('history-area');
-  const isMe = guess.player === myPlayerId;
-  const correct = guess.correct || 0;
+  const correct = parseInt(guess.correct) || 0;
 
   const item = document.createElement('div');
   item.className = 'guess-item bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100';
@@ -255,11 +471,10 @@ function renderGuess(guess) {
     digitsHTML += `<span class="digit-box">${digitsArr[i]}</span>`;
   }
 
-  // Result color
-  let numColor = '#ef4444'; // red for 0
-  if (correct === DIGITS) numColor = '#16a34a'; // green for all
-  else if (correct >= 3) numColor = '#2563eb'; // blue
-  else if (correct >= 1) numColor = '#f59e0b'; // yellow/orange
+  let numColor = '#ef4444';
+  if (correct === DIGITS) numColor = '#16a34a';
+  else if (correct >= 3) numColor = '#2563eb';
+  else if (correct >= 1) numColor = '#f59e0b';
 
   item.innerHTML = `
     <div class="flex items-center justify-between">
@@ -278,249 +493,20 @@ function renderGuess(guess) {
 
 function scrollHistoryToBottom() {
   const area = document.getElementById('history-area');
-  requestAnimationFrame(() => {
-    area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
-  });
+  requestAnimationFrame(() => area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }));
 }
 
 // ============================================
-// AUTO-SUBMIT RANDOM
+// GAME FINISHED
 // ============================================
-function autoSubmitRandomGuess() {
-  ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
-    document.getElementById(id).value = Math.floor(Math.random() * 10);
-  });
-  submitGuess();
-}
-
-// ============================================
-// ROOM: CREATE (with timeout)
-// ============================================
-async function createRoom() {
-  if (!db) {
-    showLobbyError('Firebase chưa được cấu hình. Hãy dùng LIVE TEST hoặc cập nhật firebaseConfig trong game.js');
-    return;
-  }
-
-  const btn = document.getElementById('btn-create');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang tạo...';
-
-  // Timeout 5s
-  const timeout = setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = '✨ Tạo Phòng Mới';
-    showLobbyError('Không thể kết nối Firebase. Kiểm tra firebaseConfig hoặc dùng LIVE TEST.');
-  }, 5000);
-
-  try {
-    roomId = String(Math.floor(100 + Math.random() * 900));
-    const snap = await db.ref('rooms/' + roomId).once('value');
-    clearTimeout(timeout);
-
-    if (snap.exists() && snap.val().status !== 'finished') {
-      roomId = String(Math.floor(100 + Math.random() * 900));
-    }
-
-    myPlayerId = 'player1';
-    isLiveTest = false;
-    roomRef = db.ref('rooms/' + roomId);
-
-    await roomRef.set({
-      player1: sessionId, player2: null,
-      player1Secret: null, player2Secret: null,
-      status: 'waiting', currentTurn: 'player1',
-      turnStartTime: null,
-      createdAt: firebase.database.ServerValue.TIMESTAMP
-    });
-
-    roomRef.onDisconnect().remove();
-    document.getElementById('waiting-room-code').textContent = roomId;
-    showScreen('waiting');
-
-    roomRef.child('player2').on('value', (snap) => {
-      if (snap.val()) {
-        showScreen('secret');
-        focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
-        listenForGameState();
-      }
-    });
-
-  } catch (err) {
-    clearTimeout(timeout);
-    showLobbyError('Lỗi tạo phòng: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '✨ Tạo Phòng Mới';
-  }
-}
-
-// ============================================
-// ROOM: JOIN
-// ============================================
-async function joinRoom() {
-  if (!db) {
-    showLobbyError('Firebase chưa được cấu hình. Hãy cập nhật firebaseConfig trong game.js');
-    return;
-  }
-
-  const code = ['join-d1','join-d2','join-d3'].map(id => document.getElementById(id).value).join('');
-  if (code.length !== 3 || !/^\d{3}$/.test(code)) {
-    showLobbyError('Vui lòng nhập đủ 3 chữ số');
-    return;
-  }
-
-  const btn = document.getElementById('btn-join');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang kết nối...';
-
-  try {
-    roomId = code;
-    roomRef = db.ref('rooms/' + roomId);
-    const snap = await roomRef.once('value');
-
-    if (!snap.exists()) { showLobbyError('Không tìm thấy phòng ' + code); return; }
-    const room = snap.val();
-    if (room.status !== 'waiting') { showLobbyError('Phòng đã đầy hoặc đang chơi'); return; }
-
-    myPlayerId = 'player2';
-    isLiveTest = false;
-    await roomRef.update({ player2: sessionId, status: 'setSecret' });
-
-    showScreen('secret');
-    focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
-    listenForGameState();
-  } catch (err) {
-    showLobbyError('Lỗi vào phòng: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🚀 Vào Phòng';
-  }
-}
-
-// ============================================
-// ROOM: CANCEL
-// ============================================
-function cancelRoom() {
-  if (roomRef) { roomRef.off(); roomRef.remove(); }
-  resetState();
-  showScreen('lobby');
-}
-
-// ============================================
-// SET SECRET
-// ============================================
-async function setSecret() {
-  const digits = ['secret-d1','secret-d2','secret-d3','secret-d4'].map(id => document.getElementById(id).value);
-  if (digits.some(d => d === '' || !/^\d$/.test(d))) { showSecretError('Vui lòng nhập đủ 4 chữ số'); return; }
-
-  mySecret = digits.join('');
-  const btn = document.getElementById('btn-set-secret');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang gửi...';
-
-  try {
-    await roomRef.update({ [myPlayerId + 'Secret']: mySecret });
-    document.getElementById('secret-waiting').classList.remove('hidden');
-    btn.classList.add('hidden');
-  } catch (err) {
-    showSecretError('Lỗi: ' + err.message);
-    btn.disabled = false;
-    btn.textContent = '🔒 Xác Nhận';
-  }
-}
-
-// ============================================
-// LISTEN FOR GAME STATE (ONLINE)
-// ============================================
-function listenForGameState() {
-  roomRef.on('value', (snap) => {
-    if (!snap.exists()) { showResultModal('😕', 'Phòng đã bị huỷ', 'Đối thủ đã rời phòng', ''); return; }
-    const room = snap.val();
-
-    if (room.player1Secret && room.player2Secret && room.status === 'setSecret') {
-      roomRef.update({ status: 'playing', currentTurn: 'player1', turnStartTime: firebase.database.ServerValue.TIMESTAMP });
-      return;
-    }
-
-    if (room.status === 'playing') {
-      if (!document.getElementById('screen-game').classList.contains('active')) enterGameScreen(room);
-      updateTurnUI(room);
-    }
-
-    if (room.status === 'finished') handleGameFinished(room);
-  });
-}
-
-function enterGameScreen(room) {
-  showScreen('game');
-  document.getElementById('mode-badge').textContent = 'ONLINE';
-
-  if (!guessListenerAttached) {
-    guessListenerAttached = true;
-    guessesRef = roomRef.child('guesses');
-    guessesRef.on('child_added', (snap) => {
-      const guess = snap.val();
-      renderGuess(guess);
-      scrollHistoryToBottom();
-      if (guess.player === myPlayerId) myGuessCount++;
-      else opponentGuessCount++;
-    });
-  }
-  focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
-}
-
-function updateTurnUI(room) {
-  isMyTurn = (room.currentTurn === myPlayerId);
-  const btnGuess = document.getElementById('btn-guess');
-  const inputs = ['guess-d1','guess-d2','guess-d3','guess-d4'];
-
-  if (isMyTurn) {
-    btnGuess.disabled = false;
-    inputs.forEach(id => document.getElementById(id).disabled = false);
-    focusFirstEmpty(inputs);
-  } else {
-    btnGuess.disabled = true;
-    inputs.forEach(id => document.getElementById(id).disabled = true);
-  }
-  startTimer(room.turnStartTime);
-}
-
-function startTimer(serverStartTime) {
-  if (timerRAF) cancelAnimationFrame(timerRAF);
-  turnStartTime = serverStartTime;
-  const timerBar = document.getElementById('timer-bar');
-  const timerText = document.getElementById('timer-text');
-
-  function tick() {
-    if (!turnStartTime) return;
-    const elapsed = (Date.now() - turnStartTime) / 1000;
-    const remaining = Math.max(0, TURN_DURATION - elapsed);
-    timerBar.style.width = (remaining / TURN_DURATION) * 100 + '%';
-    timerText.textContent = Math.ceil(remaining) + 's';
-
-    timerBar.classList.remove('warning', 'danger');
-    if (remaining <= 5) timerBar.classList.add('danger');
-    else if (remaining <= 10) timerBar.classList.add('warning');
-
-    if (remaining <= 0 && isMyTurn) { autoSubmitRandomGuess(); return; }
-    timerRAF = requestAnimationFrame(tick);
-  }
-  setTimeout(() => { timerRAF = requestAnimationFrame(tick); }, 100);
-}
-
 function handleGameFinished(room) {
   if (timerRAF) cancelAnimationFrame(timerRAF);
-  const iWon = room.winner === myPlayerId;
-  const opSecretKey = (myPlayerId === 'player1') ? 'player2Secret' : 'player1Secret';
-  const mySecretKey = (myPlayerId === 'player1') ? 'player1Secret' : 'player2Secret';
+  const iWon = room.winner === myRole;
 
   if (iWon) {
-    showResultModal('🏆', 'Chiến Thắng!', 'Bạn đã giải mã thành công!',
-      `Số đối thủ: <span class="text-green-600 font-bold tracking-wider">${room[opSecretKey]}</span>`);
+    showResultModal('🏆', 'Chiến Thắng!', 'Bạn đã giải mã thành công!', '');
   } else {
-    showResultModal('😞', 'Thua Cuộc!', 'Đối thủ giải mã trước!',
-      `Số của bạn: <span class="text-red-500 font-bold tracking-wider">${room[mySecretKey]}</span>`);
+    showResultModal('😞', 'Thua Cuộc!', 'Đối thủ giải mã trước!', '');
   }
 }
 
@@ -537,7 +523,7 @@ function showResultModal(emoji, title, desc, secretHTML) {
 
 function backToLobby() {
   document.getElementById('modal-result').classList.add('hidden');
-  if (roomRef) roomRef.off();
+  stopPolling();
   resetState();
   showScreen('lobby');
 }
@@ -558,9 +544,8 @@ function showSecretError(msg) {
 
 function clearGuessInputs() {
   ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
-    const el = document.getElementById(id);
-    el.value = '';
-    el.classList.remove('filled');
+    document.getElementById(id).value = '';
+    document.getElementById(id).classList.remove('filled');
   });
   document.getElementById('guess-d1').focus();
 }
@@ -580,13 +565,16 @@ function shakeInputs() {
 }
 
 function resetState() {
-  myPlayerId = null; mySecret = null; roomId = null;
-  roomRef = null; guessesRef = null;
-  guessListenerAttached = false;
-  myGuessCount = 0; opponentGuessCount = 0;
-  isMyTurn = false; turnStartTime = null;
-  isLiveTest = false; liveTestSecret = null;
+  myRole = null;
+  roomId = null;
+  isMyTurn = false;
+  turnStartTime = null;
+  lastGuessId = 0;
+  myGuessCount = 0;
+  isLiveTest = false;
+  liveTestSecret = null;
   if (timerRAF) cancelAnimationFrame(timerRAF);
+  stopPolling();
 
   ['join-d1','join-d2','join-d3'].forEach(id => { document.getElementById(id).value = ''; });
   ['secret-d1','secret-d2','secret-d3','secret-d4'].forEach(id => { document.getElementById(id).value = ''; });
@@ -618,9 +606,8 @@ document.addEventListener('keydown', (e) => {
 // Prevent zoom on double tap
 let lastTouchEnd = 0;
 document.addEventListener('touchend', (e) => {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) e.preventDefault();
-  lastTouchEnd = now;
+  if (Date.now() - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = Date.now();
 }, false);
 
-console.log('🎮 Game Giải Mã Số loaded! Session:', sessionId);
+console.log('🎮 Game Giải Mã Số loaded! Player:', myPlayerId);
