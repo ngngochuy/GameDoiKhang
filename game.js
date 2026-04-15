@@ -456,9 +456,7 @@ async function submitGuess() {
     await guessesRef.push({
       player: myPlayerId,
       digits: guess,
-      green: result.green,
-      yellow: result.yellow,
-      detailColors: result.detailColors,
+      correct: result.correct,
       timestamp: firebase.database.ServerValue.TIMESTAMP
     });
 
@@ -466,7 +464,7 @@ async function submitGuess() {
     clearGuessInputs();
 
     // Check win
-    if (result.green === DIGITS) {
+    if (result.correct === DIGITS) {
       await roomRef.update({
         status: 'finished',
         winner: myPlayerId,
@@ -488,43 +486,27 @@ async function submitGuess() {
 }
 
 // ============================================
-// MASTERMIND CHECK LOGIC
+// CHECK LOGIC — Chỉ trả về tổng số chữ số đúng
 // ============================================
 function checkGuess(guess, secret) {
-  let green = 0;
-  let yellow = 0;
+  let correct = 0;
   const guessArr = guess.split('');
   const secretArr = secret.split('');
-  const guessUsed = Array(DIGITS).fill(false);
   const secretUsed = Array(DIGITS).fill(false);
-  const detailColors = Array(DIGITS).fill('wrong');
 
-  // Pass 1: exact matches (green)
+  // Đếm bao nhiêu chữ số trong guess có tồn tại trong secret
   for (let i = 0; i < DIGITS; i++) {
-    if (guessArr[i] === secretArr[i]) {
-      green++;
-      guessUsed[i] = true;
-      secretUsed[i] = true;
-      detailColors[i] = 'exact';
-    }
-  }
-
-  // Pass 2: misplaced (yellow)
-  for (let i = 0; i < DIGITS; i++) {
-    if (guessUsed[i]) continue;
     for (let j = 0; j < DIGITS; j++) {
       if (secretUsed[j]) continue;
       if (guessArr[i] === secretArr[j]) {
-        yellow++;
-        guessUsed[i] = true;
+        correct++;
         secretUsed[j] = true;
-        detailColors[i] = 'misplaced';
         break;
       }
     }
   }
 
-  return { green, yellow, detailColors };
+  return { correct };
 }
 
 // ============================================
@@ -540,17 +522,20 @@ function renderGuess(guess) {
   const playerClass = guess.player === 'player1' ? 'player1' : 'player2';
   const playerName = isMe ? 'Bạn' : 'Đối thủ';
   const playerColor = guess.player === 'player1' ? 'text-blue-400' : 'text-rose-400';
+  const correct = guess.correct || 0;
 
   const item = document.createElement('div');
   item.className = `guess-item ${playerClass} glass-card p-3 rounded-xl`;
 
-  // Build digit boxes HTML
+  // Build digit boxes HTML — no color hints
   const digitsArr = guess.digits.split('');
-  const colors = guess.detailColors || Array(DIGITS).fill('wrong');
   let digitsHTML = '';
   for (let i = 0; i < DIGITS; i++) {
-    digitsHTML += `<span class="digit-box ${colors[i]}">${digitsArr[i]}</span>`;
+    digitsHTML += `<span class="digit-box">${digitsArr[i]}</span>`;
   }
+
+  // Badge color based on how many correct
+  const badgeClass = correct === DIGITS ? 'badge-green' : correct > 0 ? 'badge-yellow' : 'badge-gray';
 
   item.innerHTML = `
     <div class="flex items-center justify-between">
@@ -560,9 +545,8 @@ function renderGuess(guess) {
           ${digitsHTML}
         </div>
       </div>
-      <div class="flex items-center gap-1.5">
-        <span class="badge-green" title="Đúng vị trí">${guess.green}</span>
-        <span class="badge-yellow" title="Đúng số, sai vị trí">${guess.yellow}</span>
+      <div class="${badgeClass} px-3 py-1 rounded-lg text-sm" title="Số chữ số đúng">
+        ${correct}/${DIGITS}
       </div>
     </div>
   `;

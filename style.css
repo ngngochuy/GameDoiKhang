@@ -210,6 +210,18 @@ body {
   border: 1px solid rgba(234, 179, 8, 0.25);
 }
 
+.badge-gray {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* ===== DIGIT DISPLAY ===== */
 .digit-box {
   width: 34px;
