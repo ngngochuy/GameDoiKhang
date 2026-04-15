@@ -122,7 +122,12 @@ async function createRoom() {
 
   try {
     const data = await api('create_room');
-    if (data.error) { showLobbyError(data.error); return; }
+    if (data.error) {
+      showToast(data.error, 'error');
+      btn.disabled = false;
+      btn.textContent = '✨ Tạo Phòng Mới';
+      return;
+    }
 
     roomId = data.room_id;
     myRole = 'player1';
@@ -130,12 +135,10 @@ async function createRoom() {
 
     document.getElementById('waiting-room-code').textContent = roomId;
     showScreen('waiting');
-
-    // Start polling for player2
     startPolling('waitForPlayer');
   } catch (err) {
-    showLobbyError('Lỗi kết nối server. Kiểm tra API URL hoặc dùng LIVE TEST.');
-  } finally {
+    console.error('createRoom error:', err);
+    showToast('Không thể kết nối server. Hãy thử LIVE TEST.', 'error');
     btn.disabled = false;
     btn.textContent = '✨ Tạo Phòng Mới';
   }
@@ -147,7 +150,7 @@ async function createRoom() {
 async function joinRoom() {
   const code = ['join-d1','join-d2','join-d3'].map(id => document.getElementById(id).value).join('');
   if (code.length !== 3 || !/^\d{3}$/.test(code)) {
-    showLobbyError('Vui lòng nhập đủ 3 chữ số');
+    showToast('Vui lòng nhập đủ 3 chữ số', 'warning');
     return;
   }
 
@@ -157,16 +160,23 @@ async function joinRoom() {
 
   try {
     const data = await api('join_room', { room_id: code });
-    if (data.error) { showLobbyError(data.error); return; }
+    if (data.error) {
+      showToast(data.error, 'error');
+      btn.disabled = false;
+      btn.textContent = '🚀 Vào Phòng';
+      return;
+    }
 
     roomId = data.room_id;
     myRole = 'player2';
     isLiveTest = false;
+    showToast('Đã vào phòng ' + roomId + '!', 'success');
 
     showScreen('secret');
     focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
   } catch (err) {
-    showLobbyError('Lỗi kết nối server.');
+    console.error('joinRoom error:', err);
+    showToast('Không thể kết nối server.', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '🚀 Vào Phòng';
@@ -189,7 +199,7 @@ function cancelRoom() {
 async function setSecret() {
   const digits = ['secret-d1','secret-d2','secret-d3','secret-d4'].map(id => document.getElementById(id).value);
   if (digits.some(d => d === '' || !/^\d$/.test(d))) {
-    showSecretError('Vui lòng nhập đủ 4 chữ số');
+    showToast('Vui lòng nhập đủ 4 chữ số');
     return;
   }
 
@@ -200,7 +210,7 @@ async function setSecret() {
 
   try {
     const data = await api('set_secret', { room_id: roomId, secret: secret });
-    if (data.error) { showSecretError(data.error); btn.disabled = false; btn.textContent = '🔒 Xác Nhận'; return; }
+    if (data.error) { showToast(data.error); btn.disabled = false; btn.textContent = '🔒 Xác Nhận'; return; }
 
     document.getElementById('secret-waiting').classList.remove('hidden');
     btn.classList.add('hidden');
@@ -208,7 +218,7 @@ async function setSecret() {
     // Start polling for game state
     startPolling('waitForGame');
   } catch (err) {
-    showSecretError('Lỗi kết nối server.');
+    showToast('Lỗi kết nối server.');
     btn.disabled = false;
     btn.textContent = '🔒 Xác Nhận';
   }
@@ -528,18 +538,31 @@ function backToLobby() {
   showScreen('lobby');
 }
 
-function showLobbyError(msg) {
-  const el = document.getElementById('lobby-error');
-  el.textContent = msg;
-  el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 5000);
-}
+// ============================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================
+function showToast(msg, type = 'info', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
 
-function showSecretError(msg) {
-  const el = document.getElementById('secret-error');
-  el.textContent = msg;
-  el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 4000);
+  const icons = { error: '❌', warning: '⚠️', success: '✅', info: 'ℹ️' };
+  const colors = {
+    error:   'bg-red-50 border-red-200 text-red-700',
+    warning: 'bg-amber-50 border-amber-200 text-amber-700',
+    success: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    info:    'bg-blue-50 border-blue-200 text-blue-700',
+  };
+
+  toast.className = `pointer-events-auto w-full max-w-sm flex items-center gap-2.5 px-4 py-3 rounded-2xl border shadow-lg text-sm font-medium ${colors[type] || colors.info}`;
+  toast.style.animation = 'toastIn 0.3s ease';
+  toast.innerHTML = `<span class="text-lg shrink-0">${icons[type] || icons.info}</span><span class="flex-1">${msg}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
 }
 
 function clearGuessInputs() {
