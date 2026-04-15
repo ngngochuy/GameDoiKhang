@@ -55,18 +55,8 @@ switch ($action) {
         cancelRoom();
         break;
     default:
-        echo json_encode([
-            'error' => 'Invalid action',
-            'actions' => [
-                'create_room',
-                'join_room',
-                'set_secret',
-                'submit_guess',
-                'get_room',
-                'get_guesses',
-                'cancel_room'
-            ]
-        ]);
+        // Không trả error — tránh spam toast khi bị gọi không có action
+        echo json_encode(['ok' => true, 'info' => 'API ready']);
 }
 
 // ============================================
