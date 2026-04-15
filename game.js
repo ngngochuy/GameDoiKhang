@@ -14,7 +14,7 @@ if (!myPlayerId) {
 }
 
 let myRole = null;       // "player1" or "player2"
-let roomId = null;
+let roomId = sessionStorage.getItem('gms_room_id') || null;
 let isMyTurn = false;
 let timerRAF = null;
 let turnStartTime = null;
@@ -135,6 +135,7 @@ async function createRoom() {
     }
 
     roomId = String(data.room_id);
+    sessionStorage.setItem('gms_room_id', roomId);
     myRole = 'player1';
     isLiveTest = false;
 
@@ -174,6 +175,7 @@ async function joinRoom() {
     }
 
     roomId = data.room_id;
+    sessionStorage.setItem('gms_room_id', roomId);
     myRole = 'player2';
     isLiveTest = false;
     showToast('Đã vào phòng ' + roomId + '!', 'success');
@@ -584,6 +586,45 @@ function backToLobby() {
 }
 
 // ============================================
+// AUTO RECONNECT (ON PAGE LOAD)
+// ============================================
+window.addEventListener('DOMContentLoaded', async () => {
+  if (roomId) {
+    const data = await api('get_room', { room_id: roomId });
+    if (data.ok && data.room) {
+      if (data.room.status === 'finished') {
+        resetState();
+        showScreen('lobby');
+        return;
+      }
+      myRole = (data.room.player1_id === myPlayerId) ? 'player1' : 'player2';
+      
+      if (data.room.status === 'waiting') {
+        showScreen('waiting');
+        document.getElementById('waiting-room-code').textContent = roomId;
+        startPolling('waitForPlayer');
+      } else if (data.room.status === 'setSecret') {
+        if (data.room.my_secret) {
+          mySecret = data.room.my_secret;
+          showScreen('secret');
+          document.getElementById('secret-waiting').classList.remove('hidden');
+          startPolling('checkSecret');
+        } else {
+          showScreen('secret');
+          startPolling('checkSecret');
+        }
+      } else if (data.room.status === 'playing') {
+        enterGameScreen(data.room);
+        startPolling('poll');
+      }
+    } else {
+      resetState();
+      showScreen('lobby');
+    }
+  }
+});
+
+// ============================================
 // TOAST NOTIFICATION SYSTEM
 // ============================================
 function showToast(msg, type = 'info', duration = 4000) {
@@ -708,6 +749,7 @@ function shakeInputs() {
 function resetState() {
   myRole = null;
   roomId = null;
+  sessionStorage.removeItem('gms_room_id');
   isMyTurn = false;
   turnStartTime = null;
   lastGuessId = 0;
