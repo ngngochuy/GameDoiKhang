@@ -14,7 +14,8 @@ if (!myPlayerId) {
 }
 
 let myRole = null;       // "player1" or "player2"
-let roomId = sessionStorage.getItem('gms_room_id') || null;
+const urlParams = new URLSearchParams(window.location.search);
+let roomId = urlParams.get('room') || sessionStorage.getItem('gms_room_id') || null;
 let isMyTurn = false;
 let timerRAF = null;
 let turnStartTime = null;
@@ -26,6 +27,18 @@ let liveTestSecret = null;
 let mySecret = null;
 let isPaused = false;
 let myPausesLeft = 5;
+
+// Push room to URL automatically to ensure F5 always works anywhere
+function setRoomUrl(id) {
+  if (id) {
+    const newUrl = window.location.pathname + '?room=' + id;
+    window.history.replaceState({path: newUrl}, '', newUrl);
+  } else {
+    const newUrl = window.location.pathname;
+    window.history.replaceState({path: newUrl}, '', newUrl);
+  }
+}
+
 
 const TURN_DURATION = 60;
 const DIGITS = 4;
@@ -136,6 +149,7 @@ async function createRoom() {
 
     roomId = String(data.room_id);
     sessionStorage.setItem('gms_room_id', roomId);
+    setRoomUrl(roomId);
     myRole = 'player1';
     isLiveTest = false;
 
@@ -176,6 +190,7 @@ async function joinRoom() {
 
     roomId = data.room_id;
     sessionStorage.setItem('gms_room_id', roomId);
+    setRoomUrl(roomId);
     myRole = 'player2';
     isLiveTest = false;
     showToast('Đã vào phòng ' + roomId + '!', 'success');
@@ -431,11 +446,17 @@ function updateTurnUI(room) {
   if (isMyTurn) {
     btnGuess.disabled = false;
     inputs.forEach(id => document.getElementById(id).disabled = false);
-    if (timerContainer) timerContainer.classList.remove('opacity-0');
+    if (timerContainer) {
+      timerContainer.style.visibility = 'visible';
+      timerContainer.style.opacity = '1';
+    }
   } else {
     btnGuess.disabled = true;
     inputs.forEach(id => document.getElementById(id).disabled = true);
-    if (timerContainer) timerContainer.classList.add('opacity-0');
+    if (timerContainer) {
+      timerContainer.style.opacity = '0';
+      // keep visibility so layout doesn't shift, but opacity hides it smoothly
+    }
   }
 
   // Timer
@@ -591,10 +612,11 @@ function backToLobby() {
 }
 
 // ============================================
-// AUTO RECONNECT (ON PAGE LOAD)
+// AUTO RECONNECT (IMMEDIATE + BULLETPROOF)
 // ============================================
-window.addEventListener('DOMContentLoaded', async () => {
-  if (roomId) {
+(async function startAutoReconnect() {
+  if (!roomId) return;
+  try {
     const data = await api('get_room', { room_id: roomId });
     if (data.ok && data.room) {
       if (data.room.status === 'finished') {
@@ -627,16 +649,24 @@ window.addEventListener('DOMContentLoaded', async () => {
         enterGameScreen(data.room);
         startPolling('poll');
       } else {
-        showToast('Lỗi trạng thái phòng: ' + data.room.status, 'error');
+        showToast('Lỗi trạng thái: ' + data.room.status, 'error');
         resetState();
         showScreen('lobby');
       }
     } else {
-      showToast('Không thể kết nối lại: ' + (data.error || 'Server error'), 'error');
+      showToast('Phòng không còn tồn tại', 'error');
       resetState();
       showScreen('lobby');
     }
+  } catch (err) {
+    showToast('Lỗi kết nối máy chủ', 'error');
+    console.error(err);
   }
+})();
+
+// Safari BFCache Bypass
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) window.location.reload();
 });
 
 // ============================================
@@ -776,6 +806,7 @@ function resetState() {
   myRole = null;
   roomId = null;
   sessionStorage.removeItem('gms_room_id');
+  setRoomUrl(null);
   isMyTurn = false;
   turnStartTime = null;
   lastGuessId = 0;
