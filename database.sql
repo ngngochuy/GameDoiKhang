@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS `rooms` (
   `turn_start_time` BIGINT DEFAULT NULL,
   `status` ENUM('waiting','setSecret','playing','finished') DEFAULT 'waiting',
   `winner` ENUM('player1','player2') DEFAULT NULL,
+  `is_paused` TINYINT(1) DEFAULT 0,
+  `player1_pauses` INT DEFAULT 5,
+  `player2_pauses` INT DEFAULT 5,
+  `turn_pause_time` BIGINT DEFAULT NULL,
+  `resume_request_p1` BIGINT DEFAULT NULL,
+  `resume_request_p2` BIGINT DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
