@@ -76,6 +76,9 @@ switch ($action) {
     case 'skip_turn':
         skipTurn();
         break;
+    case 'surrender':
+        surrender();
+        break;
     // ─── Battleship (Hải Chiến) ───
     case 'bs_create_room':
         bsCreateRoom();
@@ -97,6 +100,9 @@ switch ($action) {
         break;
     case 'bs_cancel_room':
         bsCancelRoom();
+        break;
+    case 'bs_surrender':
+        bsSurrender();
         break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
@@ -480,6 +486,31 @@ function skipTurn()
     $stmt->execute([$newTurn, $now, $roomId]);
 
     echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// ĐẦU HÀNG (Giải Mã Số)
+// ============================================
+function surrender()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing') return error('Không thể đầu hàng lúc này');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng này');
+
+    $winner = ($myRole === 'player1') ? 'player2' : 'player1';
+    $stmt = $pdo->prepare("UPDATE rooms SET status = 'finished', winner = ?, turn_start_time = NULL WHERE id = ?");
+    $stmt->execute([$winner, $roomId]);
+
+    echo json_encode(['ok' => true, 'winner' => $winner]);
 }
 
 // ============================================
@@ -877,6 +908,32 @@ function bsCancelRoom()
 
     $pdo->prepare("DELETE FROM bs_rooms WHERE id = ? AND (player1_id = ? OR player2_id = ?)")->execute([$roomId, $playerId, $playerId]);
     echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// BS: ĐẦU HÀNG
+// ============================================
+function bsSurrender()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing') return error('Không thể đầu hàng lúc này');
+
+    $myRole = null;
+    if ($room['player1_id'] === $playerId) $myRole = 'player1';
+    elseif ($room['player2_id'] === $playerId) $myRole = 'player2';
+    else return error('Bạn không ở trong phòng này');
+
+    $winner = ($myRole === 'player1') ? 'player2' : 'player1';
+    $pdo->prepare("UPDATE bs_rooms SET status = 'finished', winner = ? WHERE id = ?")->execute([$winner, $roomId]);
+
+    echo json_encode(['ok' => true, 'winner' => $winner]);
 }
 
 // ============================================

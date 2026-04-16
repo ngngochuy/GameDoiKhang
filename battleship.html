@@ -109,6 +109,14 @@
     .opponent-ships { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin:6px 0; }
     .oship { font-size:10px; padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); color:#a5b4fc; }
     .oship.sunk { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#fca5a5; text-decoration:line-through; }
+
+    .room-code-display { text-align:center; margin:20px 0; }
+    .room-code-display .code-label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+    .room-code-display .code-value { font-size:40px; font-weight:700; letter-spacing:14px; padding-left:14px; color:var(--text); }
+    .room-code-display .code-hint { font-size:12px; color:var(--text-muted); margin-top:8px; }
+
+    .btn-surrender { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.2); font-size:11px; font-weight:600; padding:8px 16px; border-radius:10px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:5px; margin:8px auto 0; font-family:inherit; }
+    .btn-surrender:hover { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); }
   </style>
 </head>
 <body>
@@ -132,7 +140,20 @@
     </div>
     <div class="opponent-ships" id="opponent-ships"></div>
   </div>
+  <div id="room-code-area" style="display:none">
+    <div class="room-code-display">
+      <div class="code-label">Mã phòng</div>
+      <div class="code-value" id="bs-room-code">---</div>
+      <div class="code-hint">Gửi mã này cho bạn bè để tham gia</div>
+    </div>
+  </div>
   <div id="my-grid-area" class="my-grid-preview"></div>
+  <div id="surrender-area" style="display:none">
+    <button class="btn-surrender" id="btn-surrender" onclick="confirmSurrender()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      Đầu hàng
+    </button>
+  </div>
 </div>
 
 <div class="overlay hidden" id="overlay">
@@ -220,6 +241,7 @@ function initGrids() {
 
     if (room.status === 'waiting') {
       setStatus('Đang chờ đối thủ<span class="waiting-dots"></span>', 'waiting');
+      showRoomCode(roomId);
       startPolling('waitForPlayer');
     } else if (room.status === 'placement') {
       if ((myRole === 'player1' && room.player1_ready) || (myRole === 'player2' && room.player2_ready)) {
@@ -324,6 +346,8 @@ function startPlacement() {
   document.getElementById('ship-list-area').style.display = 'flex';
   document.getElementById('scoreboard').style.display = 'none';
   document.getElementById('my-grid-area').innerHTML = '';
+  document.getElementById('room-code-area').style.display = 'none';
+  document.getElementById('surrender-area').style.display = 'none';
 }
 
 function renderPlacementGrid() {
@@ -519,6 +543,8 @@ function enterBattle(room) {
   document.getElementById('ship-list-area').style.display = 'none';
   document.getElementById('scoreboard').style.display = 'block';
   document.getElementById('controls').innerHTML = '';
+  document.getElementById('room-code-area').style.display = 'none';
+  document.getElementById('surrender-area').style.display = 'block';
 
   // Load existing shots
   loadAllShots(room).then(() => {
@@ -699,6 +725,30 @@ function dismissOverlay() {
 function backToLobby() {
   stopPolling();
   window.location.href = 'index.html';
+}
+
+function showRoomCode(code) {
+  document.getElementById('bs-room-code').textContent = code;
+  document.getElementById('room-code-area').style.display = 'block';
+}
+
+async function confirmSurrender() {
+  if (!confirm('Bạn có chắc muốn đầu hàng? Đối thủ sẽ thắng trận này.')) return;
+  const btn = document.getElementById('btn-surrender');
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  try {
+    const data = await api('bs_surrender', { room_id: roomId });
+    if (data.error) { setStatus(data.error, 'hit'); btn.disabled = false; btn.style.opacity = '1'; return; }
+    stopPolling();
+    phase = 'finished';
+    showOverlay('🏳️', 'Đã Đầu Hàng', 'Bạn đã đầu hàng. Đối thủ thắng trận này.', 'Về sảnh chính', () => backToLobby());
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối', 'hit');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
 }
 
 console.log('⚓ Hải Chiến Online loaded! Player:', myPlayerId);

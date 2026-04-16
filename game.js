@@ -690,6 +690,26 @@ function showResultModal(emoji, title, desc, secretHTML) {
   document.getElementById('modal-result').classList.remove('hidden');
 }
 
+async function gmsSurrender() {
+  if (isLiveTest) { showToast('Không thể đầu hàng trong Live Test', 'warning'); return; }
+  if (!confirm('Bạn có chắc muốn đầu hàng? Đối thủ sẽ thắng trận này.')) return;
+  const btn = document.getElementById('btn-gms-surrender');
+  btn.disabled = true;
+  btn.style.opacity = '0.3';
+  try {
+    const data = await api('surrender', { room_id: roomId });
+    if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.style.opacity = '1'; return; }
+    stopPolling();
+    if (timerRAF) cancelAnimationFrame(timerRAF);
+    showResultModal('🏳️', 'Đã Đầu Hàng', 'Bạn đã đầu hàng. Đối thủ thắng trận này.', '');
+  } catch (err) {
+    console.error(err);
+    showToast('Lỗi kết nối', 'error');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+
 function backToLobby() {
   document.getElementById('modal-result').classList.add('hidden');
   stopPolling();
