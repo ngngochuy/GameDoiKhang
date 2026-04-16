@@ -110,13 +110,19 @@
     .oship { font-size:10px; padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); color:#a5b4fc; }
     .oship.sunk { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#fca5a5; text-decoration:line-through; }
 
-    .room-code-display { text-align:center; margin:20px 0; }
-    .room-code-display .code-label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
-    .room-code-display .code-value { font-size:40px; font-weight:700; letter-spacing:14px; padding-left:14px; color:var(--text); }
-    .room-code-display .code-hint { font-size:12px; color:var(--text-muted); margin-top:8px; }
-
     .btn-surrender { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.2); font-size:11px; font-weight:600; padding:8px 16px; border-radius:10px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:5px; margin:8px auto 0; font-family:inherit; }
     .btn-surrender:hover { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); }
+
+    /* Waiting screen (same as GMS) */
+    .screen-waiting { position:fixed; inset:0; z-index:90; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; animation:fadeIn 0.25s ease; }
+    .screen-waiting.active { display:flex; }
+    .pulse-ring { position:relative; }
+    .pulse-ring::before { content:''; position:absolute; inset:-8px; border-radius:50%; border:2px solid var(--accent); opacity:0; animation:pulseRing 2s ease-out infinite; }
+    @keyframes pulseRing { 0%{transform:scale(0.8);opacity:0.6} 100%{transform:scale(1.4);opacity:0} }
+    .room-code { font-size:40px; font-weight:700; letter-spacing:14px; padding-left:14px; color:var(--text); }
+    .btn-back { background:transparent; color:var(--text-muted); font-weight:500; border-radius:12px; border:1.5px solid var(--border); cursor:pointer; transition:all 0.2s ease; font-size:14px; padding:10px 32px; font-family:inherit; }
+    .btn-back:hover { border-color:#334155; color:var(--text); }
+    .btn-back:active { transform:scale(0.97); }
   </style>
 </head>
 <body>
@@ -140,19 +146,29 @@
     </div>
     <div class="opponent-ships" id="opponent-ships"></div>
   </div>
-  <div id="room-code-area" style="display:none">
-    <div class="room-code-display">
-      <div class="code-label">Mã phòng</div>
-      <div class="code-value" id="bs-room-code">---</div>
-      <div class="code-hint">Gửi mã này cho bạn bè để tham gia</div>
-    </div>
-  </div>
+
   <div id="my-grid-area" class="my-grid-preview"></div>
   <div id="surrender-area" style="display:none">
     <button class="btn-surrender" id="btn-surrender" onclick="confirmSurrender()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
       Đầu hàng
     </button>
+  </div>
+</div>
+
+<!-- WAITING SCREEN (same design as GMS) -->
+<div class="screen-waiting" id="bs-waiting-screen">
+  <div>
+    <div style="width:56px;height:56px;margin:0 auto 32px;border-radius:50%;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center" class="pulse-ring">
+      <div style="width:16px;height:16px;border-radius:50%;background:#3b82f6"></div>
+    </div>
+    <h2 style="font-size:18px;font-weight:600;margin-bottom:4px">Đang chờ đối thủ</h2>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:32px">Gửi mã phòng cho bạn bè<span class="waiting-dots"></span></p>
+    <div style="margin-bottom:40px">
+      <p style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:3px;margin-bottom:12px">Mã phòng</p>
+      <div class="room-code" id="bs-room-code">---</div>
+    </div>
+    <button class="btn-back" onclick="cancelBsRoom()">Trở về</button>
   </div>
 </div>
 
@@ -346,7 +362,8 @@ function startPlacement() {
   document.getElementById('ship-list-area').style.display = 'flex';
   document.getElementById('scoreboard').style.display = 'none';
   document.getElementById('my-grid-area').innerHTML = '';
-  document.getElementById('room-code-area').style.display = 'none';
+  document.getElementById('bs-waiting-screen').classList.remove('active');
+  document.getElementById('app').style.display = '';
   document.getElementById('surrender-area').style.display = 'none';
 }
 
@@ -543,7 +560,8 @@ function enterBattle(room) {
   document.getElementById('ship-list-area').style.display = 'none';
   document.getElementById('scoreboard').style.display = 'block';
   document.getElementById('controls').innerHTML = '';
-  document.getElementById('room-code-area').style.display = 'none';
+  document.getElementById('bs-waiting-screen').classList.remove('active');
+  document.getElementById('app').style.display = '';
   document.getElementById('surrender-area').style.display = 'block';
 
   // Load existing shots
@@ -729,7 +747,19 @@ function backToLobby() {
 
 function showRoomCode(code) {
   document.getElementById('bs-room-code').textContent = code;
-  document.getElementById('room-code-area').style.display = 'block';
+  document.getElementById('bs-waiting-screen').classList.add('active');
+  document.getElementById('app').style.display = 'none';
+}
+
+function hideWaitingScreen() {
+  document.getElementById('bs-waiting-screen').classList.remove('active');
+  document.getElementById('app').style.display = '';
+}
+
+async function cancelBsRoom() {
+  stopPolling();
+  if (roomId) api('bs_cancel_room', { room_id: roomId });
+  window.location.href = 'index.html';
 }
 
 async function confirmSurrender() {
