@@ -27,6 +27,7 @@ let liveTestSecret = null;
 let mySecret = null;
 let isPaused = false;
 let myPausesLeft = 5;
+let secretVisible = false;
 
 // Push room to URL automatically to ensure F5 always works anywhere
 function setRoomUrl(id) {
@@ -422,15 +423,36 @@ function enterGameScreen(room) {
     secContainer.classList.add('hidden');
   } else if (mySecret) {
     secContainer.classList.remove('hidden');
-    const display = document.getElementById('my-secret-display');
-    display.innerHTML = mySecret.split('').map(d => 
-      `<div class="w-[34px] h-[40px] rounded-lg bg-[#0a0e1a] border border-indigo-500/40 flex items-center justify-center text-lg font-bold text-indigo-300 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)]">${d}</div>`
-    ).join('');
+    secretVisible = false;
+    renderSecretDisplay();
   }
 
   isMyTurn = (room.current_turn === myRole);
   updateTurnUI(room);
   focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
+}
+
+// ============================================
+// TOGGLE SECRET VISIBILITY
+// ============================================
+function renderSecretDisplay() {
+  const display = document.getElementById('my-secret-display');
+  if (!mySecret) return;
+  display.innerHTML = mySecret.split('').map(d => 
+    `<div class="w-[34px] h-[40px] rounded-lg bg-[#0a0e1a] border border-indigo-500/40 flex items-center justify-center text-lg font-bold text-indigo-300 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)]">${secretVisible ? d : '●'}</div>`
+  ).join('');
+
+  const iconOff = document.getElementById('icon-eye-off');
+  const iconOn = document.getElementById('icon-eye-on');
+  if (iconOff && iconOn) {
+    iconOff.classList.toggle('hidden', secretVisible);
+    iconOn.classList.toggle('hidden', !secretVisible);
+  }
+}
+
+function toggleSecretVisibility() {
+  secretVisible = !secretVisible;
+  renderSecretDisplay();
 }
 
 // ============================================
