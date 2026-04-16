@@ -14,7 +14,7 @@
       theme: { extend: { colors: { brand: '#3b82f6' } } }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 
 <body>
@@ -39,21 +39,26 @@
         <!-- Card 1: Giải Mã Số -->
         <button onclick="showPanel('gms-panel')"
           class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-blue-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-blue-500/5">
-          <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+          <div
+            class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+              stroke-linecap="round">
               <rect x="3" y="11" width="18" height="11" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
           <h3 class="text-sm font-bold text-white mb-1">Giải Mã Số</h3>
           <p class="text-[10px] text-slate-500 leading-relaxed">Đoán số bí mật 4 chữ số của đối thủ</p>
-          <span class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md">Online</span>
+          <span
+            class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md">Online</span>
         </button>
         <!-- Card 2: Hải Chiến -->
         <button onclick="showPanel('bs-panel')"
           class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-emerald-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-emerald-500/5">
-          <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <div
+            class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 20l.4-1.2A6 6 0 0 1 8 15h0a6 6 0 0 1 5.6 3.8L14 20" />
               <path d="M8 15V6a2 2 0 0 1 2-2h0" />
               <path d="M16 20l2-6h2l2 6" />
@@ -61,59 +66,66 @@
           </div>
           <h3 class="text-sm font-bold text-white mb-1">Hải Chiến</h3>
           <p class="text-[10px] text-slate-500 leading-relaxed">Bắn tàu chiến đối phương trên lưới 10x10</p>
-          <span class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-md">Online</span>
+          <span
+            class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-md">Online</span>
         </button>
       </div>
 
       <!-- GMS Panel (hidden by default, shown when Giải Mã Số is selected) -->
       <div id="gms-panel" class="hidden space-y-3">
-        <button onclick="hidePanel('gms-panel')" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        <button onclick="hidePanel('gms-panel')"
+          class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
           Quay lại
         </button>
         <button id="btn-create" class="btn-primary w-full py-3.5" onclick="createRoom()">
           Tạo phòng mới
         </button>
 
-      <div class="flex items-center gap-3 my-3">
-        <div class="flex-1 h-px bg-slate-800"></div>
-        <span class="text-[11px] text-slate-600 uppercase tracking-widest">hoặc</span>
-        <div class="flex-1 h-px bg-slate-800"></div>
-      </div>
-
-      <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
-        <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
-        <div class="flex items-center justify-center gap-2 mb-3">
-          <input id="join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
-            maxlength="1" />
-          <input id="join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
-            maxlength="1" />
-          <input id="join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
-            maxlength="1" />
+        <div class="flex items-center gap-3 my-3">
+          <div class="flex-1 h-px bg-slate-800"></div>
+          <span class="text-[11px] text-slate-600 uppercase tracking-widest">hoặc</span>
+          <div class="flex-1 h-px bg-slate-800"></div>
         </div>
-        <button id="btn-join" class="btn-outline w-full py-3" onclick="joinRoom()">
-          Vào phòng
-        </button>
-      </div>
 
-      <p id="lobby-error" class="text-red-400 text-xs text-center mt-2 hidden"></p>
+        <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
+          <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <input id="join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
+            <input id="join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
+            <input id="join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
+          </div>
+          <button id="btn-join" class="btn-outline w-full py-3" onclick="joinRoom()">
+            Vào phòng
+          </button>
+        </div>
 
-      <div class="mt-6 bg-[#111827] rounded-xl p-4 border border-slate-800 text-left">
-        <h3 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Hướng dẫn nhanh</h3>
-        <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
-          <li>Mỗi người đặt 1 số bí mật 4 chữ số.</li>
-          <li>Mỗi lượt có 60s để đoán số đối phương.</li>
-          <li>Game báo <b class="text-emerald-400">X ĐÚNG</b> tức là có X chữ số đoán trúng và nằm <b>đúng vị trí</b>.
-          </li>
-          <li>Ai đoán trúng cả 4 số (4 ĐÚNG) trước sẽ thắng.</li>
-        </ul>
-      </div>
+        <p id="lobby-error" class="text-red-400 text-xs text-center mt-2 hidden"></p>
+
+        <div class="mt-6 bg-[#111827] rounded-xl p-4 border border-slate-800 text-left">
+          <h3 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Hướng dẫn nhanh</h3>
+          <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
+            <li>Mỗi người đặt 1 số bí mật 4 chữ số.</li>
+            <li>Mỗi lượt có 60s để đoán số đối phương.</li>
+            <li>Game báo <b class="text-emerald-400">X ĐÚNG</b> tức là có X chữ số đoán trúng và nằm <b>đúng vị trí</b>.
+            </li>
+            <li>Ai đoán trúng cả 4 số (4 ĐÚNG) trước sẽ thắng.</li>
+          </ul>
+        </div>
       </div><!-- /gms-panel -->
 
       <!-- BS Panel (hidden by default, shown when Hải Chiến is selected) -->
       <div id="bs-panel" class="hidden space-y-3">
-        <button onclick="hidePanel('bs-panel')" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        <button onclick="hidePanel('bs-panel')"
+          class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
           Quay lại
         </button>
         <button id="btn-bs-create" class="btn-primary w-full py-3.5" onclick="bsCreateRoom()">
@@ -129,9 +141,12 @@
         <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
           <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
           <div class="flex items-center justify-center gap-2 mb-3">
-            <input id="bs-join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-            <input id="bs-join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
-            <input id="bs-join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+            <input id="bs-join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
+            <input id="bs-join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
+            <input id="bs-join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]"
+              maxlength="1" />
           </div>
           <button id="btn-bs-join" class="btn-outline w-full py-3" onclick="bsJoinRoom()">
             Vào phòng
@@ -149,9 +164,12 @@
         </div>
       </div><!-- /bs-panel -->
       <!-- Clear Cache Button -->
-      <button onclick="clearCache()" class="mt-4 w-full flex items-center justify-center gap-2 text-[11px] text-slate-600 hover:text-red-400 transition-colors duration-200 py-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      <button onclick="clearCache()"
+        class="mt-4 w-full flex items-center justify-center gap-2 text-[11px] text-slate-600 hover:text-red-400 transition-colors duration-200 py-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
         Xoá Cache
       </button>
@@ -210,7 +228,8 @@
   <div id="screen-game" class="screen flex-col h-screen">
 
     <!-- HEADER -->
-    <div class="shrink-0 px-4 pb-3 bg-[#111827] border-b border-slate-800" style="padding-top: max(65px, calc(1.5rem + env(safe-area-inset-top, 24px)));">
+    <div class="shrink-0 px-4 pb-3 bg-[#111827] border-b border-slate-800"
+      style="padding-top: max(65px, calc(1.5rem + env(safe-area-inset-top, 24px)));">
       <div class="flex items-center justify-between mb-2">
         <div>
           <h2 class="text-base font-bold leading-tight">Đoán số đối thủ</h2>
@@ -245,15 +264,19 @@
         </div>
         <div class="flex items-center gap-2 mb-2">
           <p class="text-[10px] text-indigo-300/80 uppercase tracking-widest font-semibold">Mật mã của bạn</p>
-          <button id="btn-toggle-secret" onclick="toggleSecretVisibility()" class="w-6 h-6 flex items-center justify-center rounded-md bg-indigo-500/20 hover:bg-indigo-500/30 transition-colors" title="Hiện/Ẩn số">
-            <svg id="icon-eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
+          <button id="btn-toggle-secret" onclick="toggleSecretVisibility()"
+            class="w-6 h-6 flex items-center justify-center rounded-md bg-indigo-500/20 hover:bg-indigo-500/30 transition-colors"
+            title="Hiện/Ẩn số">
+            <svg id="icon-eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
             </svg>
-            <svg id="icon-eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
+            <svg id="icon-eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
         </div>
@@ -329,7 +352,7 @@
   <div id="toast-container"
     class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-  <script src="game.js?v=5"></script>
+  <script src="game.js?v=6"></script>
 </body>
 
 </html>
