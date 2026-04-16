@@ -54,7 +54,21 @@ function showScreen(id) {
 }
 
 // ============================================
-// OTP INPUT SETUP
+// PANEL SHOW/HIDE (cards ↔ game panels)
+// ============================================
+function showPanel(panelId) {
+  document.getElementById('mode-cards').classList.add('hidden');
+  document.getElementById('gms-panel').classList.add('hidden');
+  document.getElementById('bs-panel').classList.add('hidden');
+  document.getElementById(panelId).classList.remove('hidden');
+}
+function hidePanel(panelId) {
+  document.getElementById(panelId).classList.add('hidden');
+  document.getElementById('mode-cards').classList.remove('hidden');
+}
+
+// ============================================
+// OTP INPUT SETUP (mobile-friendly)
 // ============================================
 function setupOtpInputs(inputIds) {
   const inputs = inputIds.map(id => document.getElementById(id));
@@ -62,14 +76,19 @@ function setupOtpInputs(inputIds) {
     input.addEventListener('input', (e) => {
       const val = e.target.value.replace(/[^0-9]/g, '');
       e.target.value = val.slice(-1);
-      if (val && idx < inputs.length - 1) inputs[idx + 1].focus();
       e.target.classList.toggle('filled', !!e.target.value);
+      if (val && idx < inputs.length - 1) {
+        // Use requestAnimationFrame to avoid keyboard bounce on mobile
+        requestAnimationFrame(() => inputs[idx + 1].focus());
+      }
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' && !e.target.value && idx > 0) {
-        inputs[idx - 1].focus();
-        inputs[idx - 1].value = '';
-        inputs[idx - 1].classList.remove('filled');
+        requestAnimationFrame(() => {
+          inputs[idx - 1].focus();
+          inputs[idx - 1].value = '';
+          inputs[idx - 1].classList.remove('filled');
+        });
       }
     });
     input.addEventListener('paste', (e) => {
@@ -81,7 +100,10 @@ function setupOtpInputs(inputIds) {
       }
       inputs[Math.min(paste.length, inputs.length - 1)].focus();
     });
-    input.addEventListener('focus', () => setTimeout(() => input.select(), 10));
+    // Tap to select value (less aggressive than auto-select to avoid keyboard issues)
+    input.addEventListener('touchstart', () => {
+      if (input.value) setTimeout(() => input.setSelectionRange(0, 1), 0);
+    });
   });
 }
 

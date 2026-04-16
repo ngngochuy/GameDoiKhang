@@ -35,9 +35,9 @@
 
     <div class="w-full max-w-xs space-y-3">
       <!-- Game Mode Cards -->
-      <div class="grid grid-cols-2 gap-3 mb-3">
+      <div id="mode-cards" class="grid grid-cols-2 gap-3 mb-3">
         <!-- Card 1: Giải Mã Số -->
-        <button onclick="document.getElementById('gms-panel').classList.remove('hidden'); document.getElementById('mode-cards').classList.add('hidden');"
+        <button onclick="showPanel('gms-panel')"
           class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-blue-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-blue-500/5">
           <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
@@ -50,7 +50,7 @@
           <span class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md">Online</span>
         </button>
         <!-- Card 2: Hải Chiến -->
-        <button onclick="document.getElementById('bs-panel').classList.remove('hidden'); document.getElementById('mode-cards').classList.add('hidden');"
+        <button onclick="showPanel('bs-panel')"
           class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-emerald-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-emerald-500/5">
           <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -65,11 +65,9 @@
         </button>
       </div>
 
-      <div id="mode-cards"></div>
-
       <!-- GMS Panel (hidden by default, shown when Giải Mã Số is selected) -->
       <div id="gms-panel" class="hidden space-y-3">
-        <button onclick="document.getElementById('gms-panel').classList.add('hidden');" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+        <button onclick="hidePanel('gms-panel')" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           Quay lại
         </button>
@@ -114,7 +112,7 @@
 
       <!-- BS Panel (hidden by default, shown when Hải Chiến is selected) -->
       <div id="bs-panel" class="hidden space-y-3">
-        <button onclick="document.getElementById('bs-panel').classList.add('hidden');" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+        <button onclick="hidePanel('bs-panel')" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           Quay lại
         </button>
