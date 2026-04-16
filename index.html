@@ -21,24 +21,61 @@
 
   <!-- ======== SCREEN 1: LOBBY ======== -->
   <div id="screen-lobby" class="screen active flex-col items-center justify-center h-screen px-6">
-    <div class="text-center mb-12">
-      <!-- Logo icon dùng CSS, không emoji -->
+    <div class="text-center mb-8">
       <div
-        class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-blue">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+        class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-blue">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
           stroke-linecap="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
         </svg>
       </div>
-      <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Giải Mã Số</h1>
-      <p class="text-sm text-slate-500">Đối kháng 2 người chơi</p>
+      <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Game Đối Kháng</h1>
+      <p class="text-sm text-slate-500">Chọn chế độ chơi</p>
     </div>
 
     <div class="w-full max-w-xs space-y-3">
-      <button id="btn-create" class="btn-primary w-full py-3.5" onclick="createRoom()">
-        Tạo phòng mới
-      </button>
+      <!-- Game Mode Cards -->
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <!-- Card 1: Giải Mã Số -->
+        <button onclick="document.getElementById('gms-panel').classList.remove('hidden'); document.getElementById('mode-cards').classList.add('hidden');"
+          class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-blue-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-blue-500/5">
+          <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-bold text-white mb-1">Giải Mã Số</h3>
+          <p class="text-[10px] text-slate-500 leading-relaxed">Đoán số bí mật 4 chữ số của đối thủ</p>
+          <span class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md">Online</span>
+        </button>
+        <!-- Card 2: Hải Chiến -->
+        <button onclick="document.getElementById('bs-panel').classList.remove('hidden'); document.getElementById('mode-cards').classList.add('hidden');"
+          class="group bg-[#111827] rounded-xl p-4 border border-slate-800 hover:border-emerald-500/50 transition-all duration-200 text-left hover:shadow-lg hover:shadow-emerald-500/5">
+          <div class="w-10 h-10 mb-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 20l.4-1.2A6 6 0 0 1 8 15h0a6 6 0 0 1 5.6 3.8L14 20" />
+              <path d="M8 15V6a2 2 0 0 1 2-2h0" />
+              <path d="M16 20l2-6h2l2 6" />
+            </svg>
+          </div>
+          <h3 class="text-sm font-bold text-white mb-1">Hải Chiến</h3>
+          <p class="text-[10px] text-slate-500 leading-relaxed">Bắn tàu chiến đối phương trên lưới 10x10</p>
+          <span class="mt-2 inline-block text-[9px] font-semibold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-md">Online</span>
+        </button>
+      </div>
+
+      <div id="mode-cards"></div>
+
+      <!-- GMS Panel (hidden by default, shown when Giải Mã Số is selected) -->
+      <div id="gms-panel" class="hidden space-y-3">
+        <button onclick="document.getElementById('gms-panel').classList.add('hidden');" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          Quay lại
+        </button>
+        <button id="btn-create" class="btn-primary w-full py-3.5" onclick="createRoom()">
+          Tạo phòng mới
+        </button>
 
       <div class="flex items-center gap-3 my-3">
         <div class="flex-1 h-px bg-slate-800"></div>
@@ -63,12 +100,6 @@
 
       <p id="lobby-error" class="text-red-400 text-xs text-center mt-2 hidden"></p>
 
-      <button class="mt-4 text-[11px] text-slate-600 mx-auto block hover:text-slate-400 transition-colors"
-        onclick="localStorage.clear();sessionStorage.clear();window.location.href=window.location.pathname+'?t='+Date.now()">
-        Xoá cache
-      </button>
-
-      <!-- INSTRUCTIONS -->
       <div class="mt-6 bg-[#111827] rounded-xl p-4 border border-slate-800 text-left">
         <h3 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Hướng dẫn nhanh</h3>
         <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
@@ -79,6 +110,46 @@
           <li>Ai đoán trúng cả 4 số (4 ĐÚNG) trước sẽ thắng.</li>
         </ul>
       </div>
+      </div><!-- /gms-panel -->
+
+      <!-- BS Panel (hidden by default, shown when Hải Chiến is selected) -->
+      <div id="bs-panel" class="hidden space-y-3">
+        <button onclick="document.getElementById('bs-panel').classList.add('hidden');" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 mb-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          Quay lại
+        </button>
+        <button id="btn-bs-create" class="btn-primary w-full py-3.5" onclick="bsCreateRoom()">
+          Tạo phòng mới
+        </button>
+
+        <div class="flex items-center gap-3 my-3">
+          <div class="flex-1 h-px bg-slate-800"></div>
+          <span class="text-[11px] text-slate-600 uppercase tracking-widest">hoặc</span>
+          <div class="flex-1 h-px bg-slate-800"></div>
+        </div>
+
+        <div class="bg-[#111827] rounded-xl p-4 border border-slate-800">
+          <p class="text-xs text-slate-500 mb-3 text-center">Nhập mã phòng</p>
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <input id="bs-join-d1" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+            <input id="bs-join-d2" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+            <input id="bs-join-d3" class="secret-input w-14 h-14" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />
+          </div>
+          <button id="btn-bs-join" class="btn-outline w-full py-3" onclick="bsJoinRoom()">
+            Vào phòng
+          </button>
+        </div>
+
+        <div class="mt-6 bg-[#111827] rounded-xl p-4 border border-slate-800 text-left">
+          <h3 class="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wide">Hướng dẫn nhanh</h3>
+          <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
+            <li>Mỗi người đặt 5 chiến hạm trên lưới 10×10.</li>
+            <li>Luân phiên bắn vào bản đồ đối phương.</li>
+            <li>Bắn trúng → được <b class="text-emerald-400">bắn tiếp</b>, bắn trượt → đổi lượt.</li>
+            <li>Ai tiêu diệt toàn bộ 17 ô tàu đối phương trước sẽ thắng.</li>
+          </ul>
+        </div>
+      </div><!-- /bs-panel -->
     </div>
   </div>
 

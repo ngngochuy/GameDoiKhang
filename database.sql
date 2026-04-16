@@ -36,3 +36,55 @@ CREATE TABLE IF NOT EXISTS `guesses` (
   KEY `idx_room` (`room_id`),
   CONSTRAINT `fk_room` FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- ============================================
+-- Battleship (Hải Chiến) Tables
+-- ============================================
+
+-- Bảng phòng Battleship
+CREATE TABLE IF NOT EXISTS `bs_rooms` (
+  `id` INT(3) UNSIGNED NOT NULL,
+  `player1_id` VARCHAR(32) NOT NULL,
+  `player2_id` VARCHAR(32) DEFAULT NULL,
+  `player1_ready` TINYINT(1) DEFAULT 0,
+  `player2_ready` TINYINT(1) DEFAULT 0,
+  `current_turn` ENUM('player1','player2') DEFAULT 'player1',
+  `status` ENUM('waiting','placement','playing','finished') DEFAULT 'waiting',
+  `winner` ENUM('player1','player2') DEFAULT NULL,
+  `player1_hits` INT DEFAULT 0,
+  `player2_hits` INT DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+-- Bảng tàu đã đặt
+CREATE TABLE IF NOT EXISTS `bs_ships` (
+  `id` INT UNSIGNED AUTO_INCREMENT,
+  `room_id` INT(3) UNSIGNED NOT NULL,
+  `player` ENUM('player1','player2') NOT NULL,
+  `ship_id` VARCHAR(20) NOT NULL,
+  `ship_name` VARCHAR(30) NOT NULL,
+  `size` TINYINT UNSIGNED NOT NULL,
+  `start_row` TINYINT UNSIGNED NOT NULL,
+  `start_col` TINYINT UNSIGNED NOT NULL,
+  `is_vertical` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_sunk` TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_bs_room` (`room_id`),
+  CONSTRAINT `fk_bs_room_ship` FOREIGN KEY (`room_id`) REFERENCES `bs_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Bảng lịch sử bắn
+CREATE TABLE IF NOT EXISTS `bs_shots` (
+  `id` INT UNSIGNED AUTO_INCREMENT,
+  `room_id` INT(3) UNSIGNED NOT NULL,
+  `player` ENUM('player1','player2') NOT NULL,
+  `row` TINYINT UNSIGNED NOT NULL,
+  `col` TINYINT UNSIGNED NOT NULL,
+  `is_hit` TINYINT(1) NOT NULL DEFAULT 0,
+  `ship_id` VARCHAR(20) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_bs_room_shot` (`room_id`),
+  CONSTRAINT `fk_bs_room_shot` FOREIGN KEY (`room_id`) REFERENCES `bs_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;

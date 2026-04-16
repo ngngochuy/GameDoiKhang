@@ -89,6 +89,48 @@ setupOtpInputs(['join-d1', 'join-d2', 'join-d3']);
 setupOtpInputs(['secret-d1', 'secret-d2', 'secret-d3', 'secret-d4']);
 setupOtpInputs(['guess-d1', 'guess-d2', 'guess-d3', 'guess-d4']);
 
+// BS join inputs (only if elements exist)
+if (document.getElementById('bs-join-d1')) {
+  setupOtpInputs(['bs-join-d1', 'bs-join-d2', 'bs-join-d3']);
+}
+
+// ============================================
+// BATTLESHIP ROOM — CREATE & JOIN (redirects to battleship.html)
+// ============================================
+async function bsCreateRoom() {
+  const btn = document.getElementById('btn-bs-create');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tạo...';
+  try {
+    const data = await api('bs_create_room');
+    if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Tạo phòng mới'; return; }
+    window.location.href = 'battleship.html?room=' + data.room_id;
+  } catch (err) {
+    console.error(err);
+    showToast('Không thể kết nối server', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Tạo phòng mới';
+  }
+}
+
+async function bsJoinRoom() {
+  const code = ['bs-join-d1','bs-join-d2','bs-join-d3'].map(id => document.getElementById(id).value).join('');
+  if (code.length !== 3 || !/^\d{3}$/.test(code)) { showToast('Vui lòng nhập đủ 3 chữ số', 'warning'); return; }
+  const btn = document.getElementById('btn-bs-join');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang kết nối...';
+  try {
+    const data = await api('bs_join_room', { room_id: code });
+    if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Vào phòng'; return; }
+    window.location.href = 'battleship.html?room=' + data.room_id;
+  } catch (err) {
+    console.error(err);
+    showToast('Không thể kết nối server', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Vào phòng';
+  }
+}
+
 // ============================================
 // API HELPER
 // ============================================

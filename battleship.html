@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Hải Chiến - Battleship Online 2 người chơi" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Hải Chiến — Battleship</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root {
+      --bg: #0a0e1a; --bg-card: #111827; --bg-cell: #1e293b; --border: #1e293b;
+      --text: #f1f5f9; --text-muted: #94a3b8; --text-dim: #475569;
+      --accent: #3b82f6; --accent-glow: rgba(59,130,246,0.15);
+      --ship: #6366f1; --hit: #ef4444; --miss: #475569;
+      --water: #0c4a6e; --water-light: #0e7490;
+      --cell-size: min(7.5vw, 38px);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Space Grotesk',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
+    body { background:var(--bg); color:var(--text); min-height:100vh; user-select:none; -webkit-user-select:none; }
+    .container { max-width:480px; margin:0 auto; padding:16px; min-height:100vh; display:flex; flex-direction:column; }
+    .header { display:flex; align-items:center; justify-content:space-between; padding:12px 0; margin-bottom:8px; }
+    .header h1 { font-size:18px; font-weight:700; }
+    .header-back { background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:4px; font-size:12px; font-family:inherit; transition:color 0.2s; text-decoration:none; }
+    .header-back:hover { color:var(--text); }
+
+    .status-bar {
+      background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+      padding:12px 16px; margin-bottom:12px; text-align:center; font-size:13px; font-weight:600;
+      color:var(--text-muted); min-height:44px; display:flex; align-items:center; justify-content:center;
+      transition:all 0.3s ease;
+    }
+    .status-bar.hit { color:var(--hit); background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); }
+    .status-bar.miss { color:var(--miss); }
+    .status-bar.info { color:var(--accent); background:var(--accent-glow); border-color:rgba(59,130,246,0.2); }
+    .status-bar.success { color:#22c55e; background:rgba(34,197,94,0.08); border-color:rgba(34,197,94,0.2); }
+    .status-bar.waiting { color:#f59e0b; background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.2); }
+
+    .grid-wrapper { display:flex; flex-direction:column; align-items:center; }
+    .grid-label { font-size:11px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+    .grid-container { display:flex; flex-direction:column; gap:0; }
+    .grid-header { display:flex; gap:0; margin-left:calc(var(--cell-size) + 2px); margin-bottom:2px; }
+    .grid-header span { width:var(--cell-size); height:16px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:var(--text-dim); margin-right:2px; }
+    .grid-row { display:flex; gap:0; align-items:center; margin-bottom:2px; }
+    .row-label { width:var(--cell-size); height:var(--cell-size); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:var(--text-dim); margin-right:2px; }
+
+    .cell {
+      width:var(--cell-size); height:var(--cell-size); background:var(--water);
+      border:1px solid rgba(14,116,144,0.3); border-radius:4px; cursor:pointer;
+      transition:all 0.15s ease; display:flex; align-items:center; justify-content:center;
+      font-size:14px; font-weight:700; margin-right:2px; position:relative; overflow:hidden;
+    }
+    .cell::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 60%); pointer-events:none; }
+    .cell:hover:not(.hit):not(.miss):not(.disabled):not(.sunk) { background:var(--water-light); border-color:rgba(14,116,144,0.6); transform:scale(1.05); z-index:1; }
+    .cell.disabled { cursor:default; }
+    .cell.ship { background:var(--ship); border-color:rgba(99,102,241,0.5); }
+    .cell.ship-preview { background:rgba(99,102,241,0.4); border-color:rgba(99,102,241,0.6); }
+    .cell.ship-preview-invalid { background:rgba(239,68,68,0.3); border-color:rgba(239,68,68,0.5); }
+    .cell.hit { background:var(--hit); border-color:rgba(239,68,68,0.6); animation:hitPulse 0.4s ease; }
+    .cell.hit::after { content:'✕'; color:white; font-size:16px; font-weight:700; }
+    .cell.miss { background:var(--miss); border-color:rgba(71,85,105,0.5); opacity:0.7; }
+    .cell.miss::after { content:'•'; color:rgba(255,255,255,0.4); font-size:20px; }
+    .cell.sunk { background:#991b1b; border-color:#7f1d1d; }
+    .cell.sunk::after { content:'✕'; color:#fca5a5; font-size:16px; font-weight:700; }
+
+    @keyframes hitPulse { 0%{transform:scale(1)} 50%{transform:scale(1.2);box-shadow:0 0 16px rgba(239,68,68,0.5)} 100%{transform:scale(1)} }
+
+    .ship-list { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:12px 0; }
+    .ship-tag { font-size:11px; font-weight:600; padding:5px 10px; border-radius:8px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); color:#a5b4fc; transition:all 0.2s; }
+    .ship-tag.active { background:rgba(99,102,241,0.2); border-color:rgba(99,102,241,0.5); color:#c7d2fe; box-shadow:0 0 10px rgba(99,102,241,0.15); }
+    .ship-tag.placed { background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.25); color:#86efac; text-decoration:line-through; opacity:0.6; }
+
+    .btn { font-family:inherit; font-size:14px; font-weight:600; border:none; border-radius:12px; padding:12px 24px; cursor:pointer; transition:all 0.2s ease; letter-spacing:0.3px; }
+    .btn:active { transform:scale(0.97); }
+    .btn-primary { background:var(--accent); color:white; }
+    .btn-primary:hover { background:#2563eb; }
+    .btn-primary:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+    .btn-outline { background:transparent; color:var(--text-muted); border:1.5px solid var(--border); }
+    .btn-outline:hover { border-color:#334155; color:var(--text); }
+    .btn-danger { background:rgba(239,68,68,0.15); color:var(--hit); border:1px solid rgba(239,68,68,0.2); }
+    .controls { display:flex; gap:8px; justify-content:center; margin:12px 0; flex-wrap:wrap; }
+
+    .overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.92); backdrop-filter:blur(20px); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; animation:fadeIn 0.3s ease; }
+    .overlay.hidden { display:none; }
+    .overlay h2 { font-size:24px; font-weight:700; margin-bottom:8px; }
+    .overlay p { color:var(--text-muted); font-size:14px; margin-bottom:32px; }
+    .overlay .emoji { font-size:56px; margin-bottom:16px; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    .scoreboard { display:flex; gap:12px; justify-content:center; margin:8px 0 12px; }
+    .score-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:8px 16px; text-align:center; min-width:80px; }
+    .score-card.active { border-color:var(--accent); box-shadow:0 0 12px var(--accent-glow); }
+    .score-card .label { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+    .score-card .value { font-size:20px; font-weight:700; }
+    .score-card .sub { font-size:10px; color:var(--text-dim); margin-top:2px; }
+
+    .waiting-dots::after { content:''; animation:dots 1.5s steps(4,end) infinite; }
+    @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+    /* My grid (small preview) */
+    .my-grid-preview { margin-top:8px; }
+    .my-grid-preview .grid-label { font-size:9px; margin-bottom:4px; }
+    .my-grid-preview .cell { width:calc(var(--cell-size) * 0.55); height:calc(var(--cell-size) * 0.55); font-size:8px; margin-right:1px; border-radius:2px; }
+    .my-grid-preview .cell::after { font-size:8px; }
+    .my-grid-preview .grid-header span { width:calc(var(--cell-size) * 0.55); height:12px; font-size:7px; margin-right:1px; }
+    .my-grid-preview .row-label { width:calc(var(--cell-size) * 0.55); height:calc(var(--cell-size) * 0.55); font-size:7px; margin-right:1px; }
+    .my-grid-preview .grid-row { margin-bottom:1px; }
+
+    .opponent-ships { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin:6px 0; }
+    .oship { font-size:10px; padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); color:#a5b4fc; }
+    .oship.sunk { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#fca5a5; text-decoration:line-through; }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <div class="header">
+    <a href="index.html" class="header-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      Sảnh chính
+    </a>
+    <h1>⚓ Hải Chiến</h1>
+  </div>
+  <div class="status-bar" id="status">Đang kết nối<span class="waiting-dots"></span></div>
+  <div class="grid-wrapper" id="grid-area"></div>
+  <div id="ship-list-area" class="ship-list" style="display:none"></div>
+  <div class="controls" id="controls"></div>
+  <div id="scoreboard" style="display:none">
+    <div class="scoreboard">
+      <div class="score-card" id="sc-p1"><div class="label">Bạn</div><div class="value" id="score-me">0</div><div class="sub"><span id="hits-me">0</span>/17 trúng</div></div>
+      <div class="score-card" id="sc-p2"><div class="label">Đối thủ</div><div class="value" id="score-opp">0</div><div class="sub"><span id="hits-opp">0</span>/17 trúng</div></div>
+    </div>
+    <div class="opponent-ships" id="opponent-ships"></div>
+  </div>
+  <div id="my-grid-area" class="my-grid-preview"></div>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="emoji" id="overlay-emoji">🔄</div>
+  <h2 id="overlay-title"></h2>
+  <p id="overlay-desc"></p>
+  <button class="btn btn-primary" id="overlay-btn" onclick="dismissOverlay()">OK</button>
+</div>
+
+<script>
+// ============================================
+// 🚢 BATTLESHIP ONLINE — PHP/MySQL Backend
+// ============================================
+
+const API_URL = 'api.php';
+const GRID_SIZE = 10;
+const TOTAL_SHIP_CELLS = 17;
+const COLS = 'ABCDEFGHIJ';
+const POLL_MS = 1200;
+
+const SHIPS = [
+  { name: 'Tàu sân bay', size: 5, id: 'carrier' },
+  { name: 'Thiết giáp hạm', size: 4, id: 'battleship' },
+  { name: 'Tàu tuần dương', size: 3, id: 'cruiser' },
+  { name: 'Tàu ngầm', size: 3, id: 'submarine' },
+  { name: 'Tàu khu trục', size: 2, id: 'destroyer' },
+];
+
+// ─── Player ID ───
+let myPlayerId = localStorage.getItem('gms_player_id');
+if (!myPlayerId) {
+  myPlayerId = 'p_' + Math.random().toString(36).substring(2, 12);
+  localStorage.setItem('gms_player_id', myPlayerId);
+}
+
+// ─── State ───
+const urlParams = new URLSearchParams(window.location.search);
+let roomId = urlParams.get('room') || null;
+let myRole = null;
+let phase = 'connecting'; // connecting, placement, waiting_opponent, battle, finished
+let currentShipIdx = 0;
+let isVertical = false;
+let hoverCells = [];
+let placedShips = []; // ships placed locally before submit
+let myGrid = []; // 10x10 for my ships
+let attackGrid = []; // 10x10 tracking my shots on opponent
+let myShipsData = []; // from server
+let isMyTurn = false;
+let pollInterval = null;
+let lastShotId = 0;
+let overlayCallback = null;
+let firing = false;
+
+// ============================================
+// API HELPER
+// ============================================
+async function api(action, params = {}) {
+  params.action = action;
+  params.player_id = myPlayerId;
+  const resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) });
+  return resp.json();
+}
+
+// ============================================
+// INIT
+// ============================================
+function initGrids() {
+  myGrid = Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => ({ ship: null, hit: false })));
+  attackGrid = Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => ({ hit: false, isHit: false, shipId: null })));
+}
+
+// ============================================
+// AUTO CONNECT
+// ============================================
+(async function autoConnect() {
+  if (!roomId) {
+    setStatus('Lỗi: Không có mã phòng', 'hit');
+    return;
+  }
+  try {
+    const data = await api('bs_get_room', { room_id: roomId });
+    if (data.error) { setStatus('Phòng không tồn tại', 'hit'); return; }
+    const room = data.room;
+    myRole = room.my_role;
+
+    if (room.status === 'waiting') {
+      setStatus('Đang chờ đối thủ<span class="waiting-dots"></span>', 'waiting');
+      startPolling('waitForPlayer');
+    } else if (room.status === 'placement') {
+      if ((myRole === 'player1' && room.player1_ready) || (myRole === 'player2' && room.player2_ready)) {
+        setStatus('Đang chờ đối thủ đặt tàu<span class="waiting-dots"></span>', 'waiting');
+        startPolling('waitForGame');
+      } else {
+        startPlacement();
+      }
+    } else if (room.status === 'playing') {
+      enterBattle(room);
+    } else if (room.status === 'finished') {
+      setStatus('Trò chơi đã kết thúc', '');
+      document.getElementById('controls').innerHTML = '<button class="btn btn-primary" onclick="backToLobby()">Về sảnh chính</button>';
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối server', 'hit');
+  }
+})();
+
+// ============================================
+// POLLING
+// ============================================
+function startPolling(mode) {
+  stopPolling();
+  pollInterval = setInterval(async () => {
+    try {
+      const data = await api('bs_get_room', { room_id: roomId });
+      if (data.error) { stopPolling(); return; }
+      const room = data.room;
+      myRole = room.my_role;
+
+      if (mode === 'waitForPlayer') {
+        if (room.player2_id) {
+          stopPolling();
+          startPlacement();
+        }
+      } else if (mode === 'waitForGame') {
+        if (room.status === 'playing') {
+          stopPolling();
+          enterBattle(room);
+        }
+      } else if (mode === 'battle') {
+        const wasMyTurn = isMyTurn;
+        isMyTurn = (room.current_turn === myRole);
+
+        // Update scores
+        updateScoreboard(room);
+
+        // Fetch new shots
+        const shotData = await api('bs_get_shots', { room_id: roomId, after_id: lastShotId });
+        if (shotData.shots && shotData.shots.length > 0) {
+          shotData.shots.forEach(s => {
+            lastShotId = Math.max(lastShotId, parseInt(s.id));
+            const r = parseInt(s.row), c = parseInt(s.col);
+            if (s.player === myRole) {
+              // My shot on opponent
+              attackGrid[r][c] = { hit: true, isHit: !!parseInt(s.is_hit), shipId: s.ship_id };
+            } else {
+              // Opponent shot on me
+              myGrid[r][c].hit = true;
+            }
+          });
+          renderBattleGrids(room);
+        }
+
+        // Update turn UI
+        updateTurnStatus(room);
+
+        if (room.status === 'finished') {
+          stopPolling();
+          phase = 'finished';
+          const iWon = room.winner === myRole;
+          showOverlay(iWon ? '🏆' : '😞', iWon ? 'Chiến Thắng!' : 'Thua Cuộc!',
+            iWon ? 'Bạn đã tiêu diệt toàn bộ hạm đội đối phương!' : 'Đối thủ đã tiêu diệt hạm đội của bạn!',
+            'Về sảnh chính', () => backToLobby());
+        }
+      }
+    } catch (err) { console.error('Poll error:', err); }
+  }, POLL_MS);
+}
+
+function stopPolling() { if (pollInterval) { clearInterval(pollInterval); pollInterval = null; } }
+
+// ============================================
+// PLACEMENT PHASE
+// ============================================
+function startPlacement() {
+  phase = 'placement';
+  initGrids();
+  placedShips = [];
+  currentShipIdx = 0;
+  isVertical = false;
+  renderPlacementGrid();
+  renderShipList();
+  updatePlacementStatus();
+
+  document.getElementById('controls').innerHTML = `
+    <button class="btn btn-outline" id="btn-rotate" onclick="toggleRotation()">🔄 Xoay (Ngang)</button>
+    <button class="btn btn-danger" onclick="resetPlacement()">↺ Đặt lại</button>
+  `;
+  document.getElementById('ship-list-area').style.display = 'flex';
+  document.getElementById('scoreboard').style.display = 'none';
+  document.getElementById('my-grid-area').innerHTML = '';
+}
+
+function renderPlacementGrid() {
+  const area = document.getElementById('grid-area');
+  area.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'grid-wrapper';
+  const label = document.createElement('div');
+  label.className = 'grid-label';
+  label.textContent = 'Đặt tàu của bạn';
+  wrapper.appendChild(label);
+  wrapper.appendChild(buildGridDOM(myGrid, 'placement'));
+  area.appendChild(wrapper);
+}
+
+function buildGridDOM(grid, mode, isSmall) {
+  const container = document.createElement('div');
+  container.className = 'grid-container';
+  const headerRow = document.createElement('div');
+  headerRow.className = 'grid-header';
+  for (let c = 0; c < GRID_SIZE; c++) { const s = document.createElement('span'); s.textContent = COLS[c]; headerRow.appendChild(s); }
+  container.appendChild(headerRow);
+
+  for (let r = 0; r < GRID_SIZE; r++) {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    const rl = document.createElement('div');
+    rl.className = 'row-label';
+    rl.textContent = r + 1;
+    row.appendChild(rl);
+
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      const data = grid[r][c];
+
+      if (mode === 'placement') {
+        if (data.ship) cell.classList.add('ship');
+        cell.addEventListener('click', () => placeShipAt(r, c));
+        cell.addEventListener('mouseenter', () => previewShip(r, c));
+        cell.addEventListener('mouseleave', clearPreview);
+      } else if (mode === 'attack') {
+        if (data.hit) {
+          if (data.isHit) {
+            // Check sunk
+            const sunkShips = getSunkShipIds();
+            if (data.shipId && sunkShips.has(data.shipId)) cell.classList.add('sunk');
+            else cell.classList.add('hit');
+          } else {
+            cell.classList.add('miss');
+          }
+          cell.classList.add('disabled');
+        } else if (!isSmall) {
+          cell.addEventListener('click', () => fireAt(r, c));
+        }
+      } else if (mode === 'myview') {
+        if (data.hit && data.ship) cell.classList.add('hit');
+        else if (data.hit) cell.classList.add('miss');
+        else if (data.ship) cell.classList.add('ship');
+        cell.classList.add('disabled');
+      }
+      row.appendChild(cell);
+    }
+    container.appendChild(row);
+  }
+  return container;
+}
+
+function renderShipList() {
+  const area = document.getElementById('ship-list-area');
+  area.innerHTML = '';
+  SHIPS.forEach((ship, idx) => {
+    const tag = document.createElement('div');
+    tag.className = 'ship-tag';
+    if (idx === currentShipIdx) tag.classList.add('active');
+    else if (idx < currentShipIdx) tag.classList.add('placed');
+    tag.textContent = `${ship.name} (${ship.size})`;
+    area.appendChild(tag);
+  });
+}
+
+function updatePlacementStatus() {
+  if (currentShipIdx < SHIPS.length) {
+    const ship = SHIPS[currentShipIdx];
+    setStatus(`Đặt ${ship.name} (${ship.size} ô)`, 'info');
+  }
+}
+
+function toggleRotation() {
+  isVertical = !isVertical;
+  const btn = document.getElementById('btn-rotate');
+  if (btn) btn.textContent = isVertical ? '🔄 Xoay (Dọc)' : '🔄 Xoay (Ngang)';
+  clearPreview();
+}
+
+function resetPlacement() {
+  initGrids();
+  placedShips = [];
+  currentShipIdx = 0;
+  renderPlacementGrid();
+  renderShipList();
+  updatePlacementStatus();
+}
+
+function getShipCells(r, c, size, vert) {
+  const cells = [];
+  for (let i = 0; i < size; i++) cells.push({ r: vert ? r + i : r, c: vert ? c : c + i });
+  return cells;
+}
+
+function isValidPlacement(cells) {
+  return cells.every(({ r, c }) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && !myGrid[r][c].ship);
+}
+
+function previewShip(r, c) {
+  if (currentShipIdx >= SHIPS.length) return;
+  clearPreview();
+  const cells = getShipCells(r, c, SHIPS[currentShipIdx].size, isVertical);
+  const valid = isValidPlacement(cells);
+  cells.forEach(({ r: cr, c: cc }) => {
+    if (cr >= 0 && cr < GRID_SIZE && cc >= 0 && cc < GRID_SIZE) {
+      const el = document.querySelector(`#grid-area .cell[data-r="${cr}"][data-c="${cc}"]`);
+      if (el && !el.classList.contains('ship')) { el.classList.add(valid ? 'ship-preview' : 'ship-preview-invalid'); hoverCells.push(el); }
+    }
+  });
+}
+
+function clearPreview() { hoverCells.forEach(el => el.classList.remove('ship-preview', 'ship-preview-invalid')); hoverCells = []; }
+
+function placeShipAt(r, c) {
+  if (currentShipIdx >= SHIPS.length) return;
+  const ship = SHIPS[currentShipIdx];
+  const cells = getShipCells(r, c, ship.size, isVertical);
+  if (!isValidPlacement(cells)) return;
+
+  cells.forEach(({ r: cr, c: cc }) => { myGrid[cr][cc].ship = ship.id; });
+  placedShips.push({ ...ship, ship_id: ship.id, ship_name: ship.name, start_row: r, start_col: c, is_vertical: isVertical });
+  currentShipIdx++;
+  clearPreview();
+
+  if (currentShipIdx >= SHIPS.length) {
+    // All ships placed — submit to server
+    submitShips();
+  } else {
+    renderPlacementGrid();
+    renderShipList();
+    updatePlacementStatus();
+  }
+}
+
+async function submitShips() {
+  setStatus('Đang gửi vị trí tàu<span class="waiting-dots"></span>', 'info');
+  document.getElementById('controls').innerHTML = '';
+  document.getElementById('ship-list-area').style.display = 'none';
+
+  try {
+    const data = await api('bs_place_ships', { room_id: roomId, ships: placedShips });
+    if (data.error) {
+      setStatus(data.error, 'hit');
+      startPlacement(); // retry
+      return;
+    }
+    setStatus('Đang chờ đối thủ đặt tàu<span class="waiting-dots"></span>', 'waiting');
+    startPolling('waitForGame');
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối', 'hit');
+  }
+}
+
+// ============================================
+// BATTLE PHASE
+// ============================================
+function enterBattle(room) {
+  phase = 'battle';
+  initGrids();
+  lastShotId = 0;
+
+  // Rebuild myGrid from server data
+  myShipsData = room.my_ships || [];
+  myShipsData.forEach(s => {
+    const sr = parseInt(s.start_row), sc = parseInt(s.start_col), sz = parseInt(s.size), vert = !!parseInt(s.is_vertical);
+    for (let i = 0; i < sz; i++) {
+      const r = vert ? sr + i : sr, c = vert ? sc : sc + i;
+      if (r < GRID_SIZE && c < GRID_SIZE) myGrid[r][c].ship = s.ship_id;
+    }
+  });
+
+  isMyTurn = (room.current_turn === myRole);
+
+  document.getElementById('ship-list-area').style.display = 'none';
+  document.getElementById('scoreboard').style.display = 'block';
+  document.getElementById('controls').innerHTML = '';
+
+  // Load existing shots
+  loadAllShots(room).then(() => {
+    renderBattleGrids(room);
+    updateTurnStatus(room);
+    startPolling('battle');
+  });
+}
+
+async function loadAllShots(room) {
+  const data = await api('bs_get_shots', { room_id: roomId, after_id: 0 });
+  if (data.shots) {
+    data.shots.forEach(s => {
+      lastShotId = Math.max(lastShotId, parseInt(s.id));
+      const r = parseInt(s.row), c = parseInt(s.col);
+      if (s.player === myRole) {
+        attackGrid[r][c] = { hit: true, isHit: !!parseInt(s.is_hit), shipId: s.ship_id };
+      } else {
+        myGrid[r][c].hit = true;
+      }
+    });
+  }
+}
+
+function getSunkShipIds() {
+  const el = document.getElementById('opponent-ships');
+  const sunk = new Set();
+  // Rebuild from attackGrid — get ship_ids where all cells hit
+  // We'll track from the opponent_ships data in the room
+  return sunk; // Will be updated via room data
+}
+
+function renderBattleGrids(room) {
+  // Attack grid (opponent)
+  const area = document.getElementById('grid-area');
+  area.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'grid-wrapper';
+  const label = document.createElement('div');
+  label.className = 'grid-label';
+  label.textContent = 'Bản đồ đối thủ';
+  wrapper.appendChild(label);
+  wrapper.appendChild(buildGridDOM(attackGrid, 'attack', false));
+  area.appendChild(wrapper);
+
+  // My grid (small preview)
+  const myArea = document.getElementById('my-grid-area');
+  myArea.innerHTML = '';
+  const mw = document.createElement('div');
+  mw.className = 'grid-wrapper my-grid-preview';
+  const ml = document.createElement('div');
+  ml.className = 'grid-label';
+  ml.textContent = 'Bản đồ của bạn';
+  mw.appendChild(ml);
+  mw.appendChild(buildGridDOM(myGrid, 'myview', true));
+  myArea.appendChild(mw);
+
+  // Opponent ships status
+  if (room && room.opponent_ships) {
+    const osh = document.getElementById('opponent-ships');
+    osh.innerHTML = '';
+    room.opponent_ships.forEach(s => {
+      const tag = document.createElement('div');
+      tag.className = 'oship' + (parseInt(s.is_sunk) ? ' sunk' : '');
+      tag.textContent = `${s.ship_name} (${s.size})`;
+      osh.appendChild(tag);
+    });
+
+    // Update sunk styling on attack grid
+    const sunkIds = new Set(room.opponent_ships.filter(s => parseInt(s.is_sunk)).map(s => s.ship_id));
+    document.querySelectorAll('#grid-area .cell.hit').forEach(cell => {
+      const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+      if (attackGrid[r][c].shipId && sunkIds.has(attackGrid[r][c].shipId)) {
+        cell.classList.remove('hit');
+        cell.classList.add('sunk');
+      }
+    });
+  }
+}
+
+function updateTurnStatus(room) {
+  isMyTurn = (room.current_turn === myRole);
+  if (room.status === 'finished') return;
+  if (isMyTurn) {
+    setStatus('🎯 Lượt bắn của bạn — Chọn ô để bắn!', 'info');
+  } else {
+    setStatus('⏳ Đang chờ đối thủ bắn<span class="waiting-dots"></span>', 'waiting');
+  }
+}
+
+function updateScoreboard(room) {
+  const myHits = (myRole === 'player1') ? room.player1_hits : room.player2_hits;
+  const oppHits = (myRole === 'player1') ? room.player2_hits : room.player1_hits;
+  document.getElementById('score-me').textContent = myHits;
+  document.getElementById('score-opp').textContent = oppHits;
+  document.getElementById('hits-me').textContent = myHits;
+  document.getElementById('hits-opp').textContent = oppHits;
+  document.getElementById('sc-p1').classList.toggle('active', isMyTurn);
+  document.getElementById('sc-p2').classList.toggle('active', !isMyTurn);
+}
+
+// ============================================
+// FIRE
+// ============================================
+async function fireAt(r, c) {
+  if (!isMyTurn || phase !== 'battle' || firing) return;
+  if (attackGrid[r][c].hit) return;
+
+  firing = true;
+  setStatus('Đang bắn...', 'info');
+
+  try {
+    const data = await api('bs_fire', { room_id: roomId, row: r, col: c });
+    if (data.error) { setStatus(data.error, 'hit'); firing = false; return; }
+
+    // Update local grid
+    attackGrid[r][c] = { hit: true, isHit: data.is_hit, shipId: null };
+    lastShotId++; // Will be corrected on next poll
+
+    if (data.is_hit) {
+      if (data.ship_sunk) {
+        setStatus(`🔥 Chìm ${data.ship_name}! Bắn tiếp!`, 'hit');
+      } else {
+        setStatus('🎯 Trúng đích! Bắn tiếp!', 'hit');
+      }
+      isMyTurn = true;
+    } else {
+      setStatus('💨 Trượt! Chờ đối thủ...', 'miss');
+      isMyTurn = false;
+    }
+
+    // Refresh from server
+    const roomData = await api('bs_get_room', { room_id: roomId });
+    if (roomData.room) {
+      renderBattleGrids(roomData.room);
+      updateScoreboard(roomData.room);
+      if (roomData.room.status === 'finished') {
+        stopPolling();
+        phase = 'finished';
+        const iWon = roomData.room.winner === myRole;
+        setTimeout(() => {
+          showOverlay(iWon ? '🏆' : '😞', iWon ? 'Chiến Thắng!' : 'Thua Cuộc!',
+            iWon ? 'Bạn đã tiêu diệt toàn bộ hạm đội đối phương!' : 'Đối thủ đã tiêu diệt hạm đội của bạn!',
+            'Về sảnh chính', () => backToLobby());
+        }, 500);
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối', 'hit');
+  }
+  firing = false;
+}
+
+// ============================================
+// HELPERS
+// ============================================
+function setStatus(html, type) {
+  const el = document.getElementById('status');
+  el.innerHTML = html;
+  el.className = 'status-bar' + (type ? ' ' + type : '');
+}
+
+function showOverlay(emoji, title, desc, btnText, callback) {
+  document.getElementById('overlay-emoji').textContent = emoji;
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-desc').textContent = desc;
+  document.getElementById('overlay-btn').textContent = btnText;
+  overlayCallback = callback;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function dismissOverlay() {
+  document.getElementById('overlay').classList.add('hidden');
+  if (overlayCallback) { overlayCallback(); overlayCallback = null; }
+}
+
+function backToLobby() {
+  stopPolling();
+  window.location.href = 'index.html';
+}
+
+console.log('⚓ Hải Chiến Online loaded! Player:', myPlayerId);
+</script>
+</body>
+</html>

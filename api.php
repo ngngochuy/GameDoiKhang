@@ -76,6 +76,28 @@ switch ($action) {
     case 'skip_turn':
         skipTurn();
         break;
+    // ─── Battleship (Hải Chiến) ───
+    case 'bs_create_room':
+        bsCreateRoom();
+        break;
+    case 'bs_join_room':
+        bsJoinRoom();
+        break;
+    case 'bs_place_ships':
+        bsPlaceShips();
+        break;
+    case 'bs_get_room':
+        bsGetRoom();
+        break;
+    case 'bs_fire':
+        bsFire();
+        break;
+    case 'bs_get_shots':
+        bsGetShots();
+        break;
+    case 'bs_cancel_room':
+        bsCancelRoom();
+        break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
         echo json_encode(['ok' => true, 'info' => 'API ready']);
@@ -483,6 +505,381 @@ function checkGuess($guess, $secret)
 }
 
 // ============================================
+// ===== BATTLESHIP (HẢI CHIẾN) ENDPOINTS =====
+// ============================================
+
+// ─── Auto Migration for Battleship tables ───
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `bs_rooms` (
+        `id` INT(3) UNSIGNED NOT NULL,
+        `player1_id` VARCHAR(32) NOT NULL,
+        `player2_id` VARCHAR(32) DEFAULT NULL,
+        `player1_ready` TINYINT(1) DEFAULT 0,
+        `player2_ready` TINYINT(1) DEFAULT 0,
+        `current_turn` ENUM('player1','player2') DEFAULT 'player1',
+        `status` ENUM('waiting','placement','playing','finished') DEFAULT 'waiting',
+        `winner` ENUM('player1','player2') DEFAULT NULL,
+        `player1_hits` INT DEFAULT 0,
+        `player2_hits` INT DEFAULT 0,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `bs_ships` (
+        `id` INT UNSIGNED AUTO_INCREMENT,
+        `room_id` INT(3) UNSIGNED NOT NULL,
+        `player` ENUM('player1','player2') NOT NULL,
+        `ship_id` VARCHAR(20) NOT NULL,
+        `ship_name` VARCHAR(30) NOT NULL,
+        `size` TINYINT UNSIGNED NOT NULL,
+        `start_row` TINYINT UNSIGNED NOT NULL,
+        `start_col` TINYINT UNSIGNED NOT NULL,
+        `is_vertical` TINYINT(1) NOT NULL DEFAULT 0,
+        `is_sunk` TINYINT(1) NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        KEY `idx_bs_room` (`room_id`)
+    ) ENGINE=InnoDB");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `bs_shots` (
+        `id` INT UNSIGNED AUTO_INCREMENT,
+        `room_id` INT(3) UNSIGNED NOT NULL,
+        `player` ENUM('player1','player2') NOT NULL,
+        `row` TINYINT UNSIGNED NOT NULL,
+        `col` TINYINT UNSIGNED NOT NULL,
+        `is_hit` TINYINT(1) NOT NULL DEFAULT 0,
+        `ship_id` VARCHAR(20) DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_bs_room_shot` (`room_id`)
+    ) ENGINE=InnoDB");
+} catch (PDOException $e) { /* tables already exist */ }
+
+// ============================================
+// BS: TẠO PHÒNG
+// ============================================
+function bsCreateRoom()
+{
+    global $pdo;
+    $playerId = getParam('player_id');
+    if (!$playerId) return error('Missing player_id');
+
+    $pdo->exec("DELETE FROM bs_rooms WHERE created_at < NOW() - INTERVAL 1 HOUR");
+
+    $roomId = null;
+    for ($i = 0; $i < 20; $i++) {
+        $id = rand(100, 999);
+        $stmt = $pdo->prepare("SELECT id FROM bs_rooms WHERE id = ?");
+        $stmt->execute([$id]);
+        if (!$stmt->fetch()) { $roomId = $id; break; }
+    }
+    if (!$roomId) return error('Không thể tạo phòng');
+
+    $stmt = $pdo->prepare("INSERT INTO bs_rooms (id, player1_id, status) VALUES (?, ?, 'waiting')");
+    $stmt->execute([$roomId, $playerId]);
+
+    echo json_encode(['ok' => true, 'room_id' => $roomId]);
+}
+
+// ============================================
+// BS: VÀO PHÒNG
+// ============================================
+function bsJoinRoom()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Không tìm thấy phòng');
+    if ($room['status'] !== 'waiting') return error('Phòng đã đầy');
+
+    $stmt = $pdo->prepare("UPDATE bs_rooms SET player2_id = ?, status = 'placement' WHERE id = ?");
+    $stmt->execute([$playerId, $roomId]);
+
+    echo json_encode(['ok' => true, 'room_id' => (int)$roomId]);
+}
+
+// ============================================
+// BS: ĐẶT TÀU
+// ============================================
+function bsPlaceShips()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    $ships = getParam('ships'); // JSON array of ships
+
+    if (!$roomId || !$playerId || !$ships) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Phòng không tồn tại');
+
+    $myRole = null;
+    if ($room['player1_id'] === $playerId) $myRole = 'player1';
+    elseif ($room['player2_id'] === $playerId) $myRole = 'player2';
+    else return error('Bạn không ở trong phòng');
+
+    $readyField = $myRole . '_ready';
+    if ($room[$readyField]) return error('Bạn đã đặt tàu rồi');
+
+    // Validate ships
+    $expectedSizes = [5, 4, 3, 3, 2];
+    if (count($ships) !== 5) return error('Cần đặt 5 tàu');
+
+    $grid = array_fill(0, 10, array_fill(0, 10, false));
+
+    foreach ($ships as $idx => $ship) {
+        $size = (int)$ship['size'];
+        $sr = (int)$ship['start_row'];
+        $sc = (int)$ship['start_col'];
+        $vert = !empty($ship['is_vertical']);
+
+        if ($size !== $expectedSizes[$idx]) return error('Kích thước tàu không hợp lệ');
+
+        // Check bounds + overlap
+        for ($i = 0; $i < $size; $i++) {
+            $r = $vert ? $sr + $i : $sr;
+            $c = $vert ? $sc : $sc + $i;
+            if ($r < 0 || $r >= 10 || $c < 0 || $c >= 10) return error('Tàu nằm ngoài bản đồ');
+            if ($grid[$r][$c]) return error('Tàu bị đè lên nhau');
+            $grid[$r][$c] = true;
+        }
+    }
+
+    // Save ships to DB
+    $pdo->prepare("DELETE FROM bs_ships WHERE room_id = ? AND player = ?")->execute([$roomId, $myRole]);
+
+    $stmt = $pdo->prepare("INSERT INTO bs_ships (room_id, player, ship_id, ship_name, size, start_row, start_col, is_vertical) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    foreach ($ships as $ship) {
+        $stmt->execute([
+            $roomId, $myRole,
+            $ship['ship_id'], $ship['ship_name'], (int)$ship['size'],
+            (int)$ship['start_row'], (int)$ship['start_col'],
+            !empty($ship['is_vertical']) ? 1 : 0
+        ]);
+    }
+
+    // Mark ready
+    $pdo->prepare("UPDATE bs_rooms SET {$readyField} = 1 WHERE id = ?")->execute([$roomId]);
+
+    // Check if both ready
+    $stmt = $pdo->prepare("SELECT player1_ready, player2_ready FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $updated = $stmt->fetch();
+
+    if ($updated['player1_ready'] && $updated['player2_ready']) {
+        $pdo->prepare("UPDATE bs_rooms SET status = 'playing', current_turn = 'player1' WHERE id = ?")->execute([$roomId]);
+    }
+
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// BS: LẤY TRẠNG THÁI PHÒNG
+// ============================================
+function bsGetRoom()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId) return error('Missing room_id');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Phòng không tồn tại');
+
+    $myRole = null;
+    if ($room['player1_id'] === $playerId) $myRole = 'player1';
+    elseif ($room['player2_id'] === $playerId) $myRole = 'player2';
+
+    // Get sunk ships info for opponent
+    $opponentRole = ($myRole === 'player1') ? 'player2' : 'player1';
+    $stmt = $pdo->prepare("SELECT ship_id, ship_name, size, is_sunk FROM bs_ships WHERE room_id = ? AND player = ?");
+    $stmt->execute([$roomId, $opponentRole]);
+    $opponentShips = $stmt->fetchAll();
+
+    // Get my ships (with positions)
+    $stmt = $pdo->prepare("SELECT ship_id, ship_name, size, start_row, start_col, is_vertical, is_sunk FROM bs_ships WHERE room_id = ? AND player = ?");
+    $stmt->execute([$roomId, $myRole]);
+    $myShips = $stmt->fetchAll();
+
+    echo json_encode([
+        'ok' => true,
+        'room' => [
+            'id' => (int)$room['id'],
+            'player1_id' => $room['player1_id'],
+            'player2_id' => $room['player2_id'],
+            'player1_ready' => (bool)$room['player1_ready'],
+            'player2_ready' => (bool)$room['player2_ready'],
+            'current_turn' => $room['current_turn'],
+            'status' => $room['status'],
+            'winner' => $room['winner'],
+            'player1_hits' => (int)$room['player1_hits'],
+            'player2_hits' => (int)$room['player2_hits'],
+            'my_role' => $myRole,
+            'my_ships' => $myShips,
+            'opponent_ships' => $opponentShips,
+        ]
+    ]);
+}
+
+// ============================================
+// BS: BẮN
+// ============================================
+function bsFire()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    $row = getParam('row');
+    $col = getParam('col');
+
+    if (!$roomId || !$playerId || $row === null || $col === null) return error('Missing params');
+    $row = (int)$row;
+    $col = (int)$col;
+    if ($row < 0 || $row >= 10 || $col < 0 || $col >= 10) return error('Vị trí không hợp lệ');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing') return error('Game chưa bắt đầu');
+
+    $myRole = null;
+    if ($room['player1_id'] === $playerId) $myRole = 'player1';
+    elseif ($room['player2_id'] === $playerId) $myRole = 'player2';
+    else return error('Bạn không ở trong phòng');
+
+    if ($room['current_turn'] !== $myRole) return error('Chưa đến lượt bạn');
+
+    // Check already shot
+    $stmt = $pdo->prepare("SELECT id FROM bs_shots WHERE room_id = ? AND player = ? AND `row` = ? AND `col` = ?");
+    $stmt->execute([$roomId, $myRole, $row, $col]);
+    if ($stmt->fetch()) return error('Bạn đã bắn ô này rồi');
+
+    // Check hit
+    $opponentRole = ($myRole === 'player1') ? 'player2' : 'player1';
+    $stmt = $pdo->prepare("SELECT * FROM bs_ships WHERE room_id = ? AND player = ?");
+    $stmt->execute([$roomId, $opponentRole]);
+    $ships = $stmt->fetchAll();
+
+    $isHit = false;
+    $hitShipId = null;
+    $hitShipName = null;
+    $shipSunk = false;
+
+    foreach ($ships as $ship) {
+        $sr = (int)$ship['start_row'];
+        $sc = (int)$ship['start_col'];
+        $sz = (int)$ship['size'];
+        $vert = (bool)$ship['is_vertical'];
+
+        for ($i = 0; $i < $sz; $i++) {
+            $cr = $vert ? $sr + $i : $sr;
+            $cc = $vert ? $sc : $sc + $i;
+            if ($cr === $row && $cc === $col) {
+                $isHit = true;
+                $hitShipId = $ship['ship_id'];
+                $hitShipName = $ship['ship_name'];
+                break 2;
+            }
+        }
+    }
+
+    // Record shot
+    $stmt = $pdo->prepare("INSERT INTO bs_shots (room_id, player, `row`, `col`, is_hit, ship_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$roomId, $myRole, $row, $col, $isHit ? 1 : 0, $hitShipId]);
+
+    $result = ['ok' => true, 'is_hit' => $isHit, 'ship_sunk' => false, 'ship_name' => null, 'won' => false];
+
+    if ($isHit) {
+        // Update hit count
+        $hitsField = $myRole . '_hits';
+        $pdo->prepare("UPDATE bs_rooms SET {$hitsField} = {$hitsField} + 1 WHERE id = ?")->execute([$roomId]);
+
+        // Check if ship sunk: all cells of this ship hit?
+        $targetShip = null;
+        foreach ($ships as $ship) {
+            if ($ship['ship_id'] === $hitShipId) { $targetShip = $ship; break; }
+        }
+
+        if ($targetShip) {
+            $allHit = true;
+            $sr = (int)$targetShip['start_row'];
+            $sc = (int)$targetShip['start_col'];
+            $sz = (int)$targetShip['size'];
+            $vert = (bool)$targetShip['is_vertical'];
+
+            for ($i = 0; $i < $sz; $i++) {
+                $cr = $vert ? $sr + $i : $sr;
+                $cc = $vert ? $sc : $sc + $i;
+                if ($cr === $row && $cc === $col) continue; // current shot
+                $stmt = $pdo->prepare("SELECT id FROM bs_shots WHERE room_id = ? AND player = ? AND `row` = ? AND `col` = ? AND is_hit = 1");
+                $stmt->execute([$roomId, $myRole, $cr, $cc]);
+                if (!$stmt->fetch()) { $allHit = false; break; }
+            }
+
+            if ($allHit) {
+                $pdo->prepare("UPDATE bs_ships SET is_sunk = 1 WHERE room_id = ? AND player = ? AND ship_id = ?")->execute([$roomId, $opponentRole, $hitShipId]);
+                $result['ship_sunk'] = true;
+                $result['ship_name'] = $hitShipName;
+            }
+        }
+
+        // Check win (17 hits total)
+        $stmt = $pdo->prepare("SELECT {$hitsField} FROM bs_rooms WHERE id = ?");
+        $stmt->execute([$roomId]);
+        $currentHits = (int)$stmt->fetchColumn();
+
+        if ($currentHits >= 17) {
+            $pdo->prepare("UPDATE bs_rooms SET status = 'finished', winner = ? WHERE id = ?")->execute([$myRole, $roomId]);
+            $result['won'] = true;
+        }
+        // HIT = same player continues (don't switch turn)
+    } else {
+        // MISS = switch turn
+        $nextTurn = ($myRole === 'player1') ? 'player2' : 'player1';
+        $pdo->prepare("UPDATE bs_rooms SET current_turn = ? WHERE id = ?")->execute([$nextTurn, $roomId]);
+    }
+
+    echo json_encode($result);
+}
+
+// ============================================
+// BS: LẤY LỊCH SỬ BẮN
+// ============================================
+function bsGetShots()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $afterId = getParam('after_id', 0);
+    if (!$roomId) return error('Missing room_id');
+
+    $stmt = $pdo->prepare("SELECT id, player, `row`, `col`, is_hit, ship_id FROM bs_shots WHERE room_id = ? AND id > ? ORDER BY id ASC");
+    $stmt->execute([$roomId, $afterId]);
+    $shots = $stmt->fetchAll();
+
+    echo json_encode(['ok' => true, 'shots' => $shots]);
+}
+
+// ============================================
+// BS: HUỶ PHÒNG
+// ============================================
+function bsCancelRoom()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId) return error('Missing room_id');
+
+    $pdo->prepare("DELETE FROM bs_rooms WHERE id = ? AND (player1_id = ? OR player2_id = ?)")->execute([$roomId, $playerId, $playerId]);
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
 // HELPERS
 // ============================================
 function getParam($name, $default = null)
@@ -499,3 +896,4 @@ function error($msg)
 {
     echo json_encode(['error' => $msg]);
 }
+
