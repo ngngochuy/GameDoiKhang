@@ -15,7 +15,7 @@
       --accent: #3b82f6; --accent-glow: rgba(59,130,246,0.15);
       --ship: #6366f1; --hit: #ef4444; --miss: #475569;
       --water: #0c4a6e; --water-light: #0e7490;
-      --cell-size: min(7.5vw, 38px);
+      --cell-size: min(8.5vw, 36px);
     }
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Space Grotesk',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
     body { background:var(--bg); color:var(--text); min-height:100vh; user-select:none; -webkit-user-select:none; }
@@ -154,6 +154,13 @@
     .my-grid-preview .grid-header span { width:calc(var(--cell-size) * 0.55); height:12px; font-size:7px; margin-right:1px; }
     .my-grid-preview .row-label { width:calc(var(--cell-size) * 0.55); height:calc(var(--cell-size) * 0.55); font-size:7px; margin-right:1px; }
     .my-grid-preview .grid-row { margin-bottom:1px; }
+    .my-grid-preview .grid-header { margin-left:calc(var(--cell-size) * 0.55 + 1px); }
+    .my-grid-preview .ship-overlay-img { opacity:0.6; }
+    .my-grid-preview .cell.ship-start { overflow:visible !important; z-index:3; }
+
+    .my-grid-toggle { display:flex; align-items:center; gap:6px; justify-content:center; margin:6px 0 2px; cursor:pointer; color:var(--text-dim); font-size:11px; font-weight:600; transition:color 0.2s; }
+    .my-grid-toggle:hover { color:var(--text-muted); }
+    .my-grid-toggle svg { flex-shrink:0; }
 
     .opponent-ships { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin:6px 0; }
     .oship { font-size:10px; padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); color:#a5b4fc; }
@@ -209,7 +216,12 @@
     <div class="opponent-ships" id="opponent-ships"></div>
   </div>
 
-  <div id="my-grid-area" class="my-grid-preview"></div>
+  <div id="my-grid-area" class="my-grid-preview" style="display:none"></div>
+  <div class="my-grid-toggle" id="my-grid-toggle" onclick="toggleMyGrid()" style="display:none">
+    <svg id="eye-icon-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+    <svg id="eye-icon-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span id="eye-label">Hiện bản đồ của bạn</span>
+  </div>
 </div>
 
 <!-- WAITING SCREEN (same design as GMS) -->
@@ -256,6 +268,8 @@ const API_URL = 'api.php';
 const GRID_SIZE = 10;
 const TOTAL_SHIP_CELLS = 15;
 const COLS = 'ABCDEFGHIJ';
+const ROWS_LABEL = COLS;
+const COLS_LABEL = [1,2,3,4,5,6,7,8,9,10];
 const POLL_MS = 1200;
 
 const SHIPS = [
@@ -293,6 +307,7 @@ let firing = false;
 let bsTimerRAF = null;
 let bsTurnStart = null;
 let bsIsPaused = false;
+let myGridVisible = false;
 const BS_TURN_DURATION = 60;
 
 // ============================================
@@ -439,6 +454,7 @@ function startPlacement() {
   document.getElementById('app').style.display = '';
   document.getElementById('battle-actions').style.display = 'none';
   document.getElementById('bs-timer').style.display = 'none';
+  document.getElementById('my-grid-toggle').style.display = 'none';
   document.getElementById('btn-ready').classList.remove('show');
 }
 
@@ -459,6 +475,8 @@ function renderPlacementGrid() {
 
 function addShipOverlays(containerSelector, ships, faded) {
   if (!ships || ships.length === 0) return;
+  const isSmall = containerSelector.includes('my-grid');
+  const gapPx = isSmall ? 1 : 2;
   ships.forEach(ship => {
     const shipDef = SHIPS.find(s => s.id === ship.ship_id || s.id === ship.id);
     if (!shipDef) return;
@@ -474,7 +492,9 @@ function addShipOverlays(containerSelector, ships, faded) {
     img.draggable = false;
 
     const sz = parseInt(ship.size);
-    const sizeCalc = sz === 1 ? 'var(--cell-size)' : `calc(${sz} * (var(--cell-size) + 2px) - 2px)`;
+    const sizeCalc = sz === 1
+      ? (isSmall ? 'calc(var(--cell-size) * 0.55)' : 'var(--cell-size)')
+      : `calc(${sz} * (${isSmall ? 'var(--cell-size) * 0.55' : 'var(--cell-size)'} + ${gapPx}px) - ${gapPx}px)`;
 
     if (ship.is_vertical) {
       img.style.width = sizeCalc;
@@ -495,7 +515,7 @@ function buildGridDOM(grid, mode, isSmall) {
   container.className = 'grid-container';
   const headerRow = document.createElement('div');
   headerRow.className = 'grid-header';
-  for (let c = 0; c < GRID_SIZE; c++) { const s = document.createElement('span'); s.textContent = COLS[c]; headerRow.appendChild(s); }
+  for (let c = 0; c < GRID_SIZE; c++) { const s = document.createElement('span'); s.textContent = COLS_LABEL[c]; headerRow.appendChild(s); }
   container.appendChild(headerRow);
 
   for (let r = 0; r < GRID_SIZE; r++) {
@@ -503,7 +523,7 @@ function buildGridDOM(grid, mode, isSmall) {
     row.className = 'grid-row';
     const rl = document.createElement('div');
     rl.className = 'row-label';
-    rl.textContent = r + 1;
+    rl.textContent = ROWS_LABEL[r];
     row.appendChild(rl);
 
     for (let c = 0; c < GRID_SIZE; c++) {
@@ -720,6 +740,10 @@ function enterBattle(room) {
   document.getElementById('battle-actions').style.display = 'flex';
   document.getElementById('bs-timer').style.display = 'flex';
   document.getElementById('btn-ready').classList.remove('show');
+  document.getElementById('my-grid-toggle').style.display = 'flex';
+  document.getElementById('my-grid-area').style.display = 'none';
+  myGridVisible = false;
+  updateEyeIcon();
 
   // Load existing shots
   loadAllShots(room).then(() => {
@@ -933,6 +957,18 @@ function showOverlay(emoji, title, desc, btnText, callback) {
 function dismissOverlay() {
   document.getElementById('overlay').classList.add('hidden');
   if (overlayCallback) { overlayCallback(); overlayCallback = null; }
+}
+
+function toggleMyGrid() {
+  myGridVisible = !myGridVisible;
+  document.getElementById('my-grid-area').style.display = myGridVisible ? '' : 'none';
+  updateEyeIcon();
+}
+
+function updateEyeIcon() {
+  document.getElementById('eye-icon-off').style.display = myGridVisible ? 'none' : '';
+  document.getElementById('eye-icon-on').style.display = myGridVisible ? '' : 'none';
+  document.getElementById('eye-label').textContent = myGridVisible ? 'Ẩn bản đồ của bạn' : 'Hiện bản đồ của bạn';
 }
 
 function backToLobby() {
