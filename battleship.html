@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="description" content="Hải Chiến - Battleship Online 2 người chơi" />
   <meta name="theme-color" content="#0a0e1a" />
+  <link rel="icon" type="image/png" href="img/nghuy.png" />
   <title>Hải Chiến — Battleship</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
@@ -54,6 +55,7 @@
     .cell:hover:not(.hit):not(.miss):not(.disabled):not(.sunk) { background:var(--water-light); border-color:rgba(14,116,144,0.6); transform:scale(1.05); z-index:1; }
     .cell.disabled { cursor:default; }
     .cell.ship { background:var(--ship); border-color:rgba(99,102,241,0.5); }
+    .cell.ship img { width:100%; height:100%; object-fit:contain; filter:brightness(0) invert(1); pointer-events:none; }
     .cell.ship-preview { background:rgba(99,102,241,0.4); border-color:rgba(99,102,241,0.6); }
     .cell.ship-preview-invalid { background:rgba(239,68,68,0.3); border-color:rgba(239,68,68,0.5); }
     .cell.hit { background:var(--hit); border-color:rgba(239,68,68,0.6); animation:hitPulse 0.4s ease; }
@@ -65,10 +67,28 @@
 
     @keyframes hitPulse { 0%{transform:scale(1)} 50%{transform:scale(1.2);box-shadow:0 0 16px rgba(239,68,68,0.5)} 100%{transform:scale(1)} }
 
-    .ship-list { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:12px 0; }
+    .ship-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:12px 0; }
+    .ship-card {
+      display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 10px;
+      border-radius:10px; background:rgba(99,102,241,0.08); border:1.5px solid rgba(99,102,241,0.2);
+      cursor:pointer; transition:all 0.2s; min-width:60px; position:relative;
+    }
+    .ship-card img { height:28px; object-fit:contain; filter:brightness(0) invert(0.7); transition:filter 0.2s; pointer-events:none; }
+    .ship-card .ship-label { font-size:9px; font-weight:600; color:#a5b4fc; white-space:nowrap; }
+    .ship-card.active { background:rgba(99,102,241,0.2); border-color:rgba(99,102,241,0.6); box-shadow:0 0 14px rgba(99,102,241,0.2); transform:scale(1.05); }
+    .ship-card.active img { filter:brightness(0) invert(1); }
+    .ship-card.placed { background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.25); opacity:0.5; cursor:default; pointer-events:none; }
+    .ship-card.placed img { filter:brightness(0) invert(0.4); }
+    .ship-card.placed .ship-label { color:#86efac; text-decoration:line-through; }
+    .ship-card.placed::after { content:'✓'; position:absolute; top:2px; right:4px; font-size:10px; color:#86efac; }
     .ship-tag { font-size:11px; font-weight:600; padding:5px 10px; border-radius:8px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); color:#a5b4fc; transition:all 0.2s; }
     .ship-tag.active { background:rgba(99,102,241,0.2); border-color:rgba(99,102,241,0.5); color:#c7d2fe; box-shadow:0 0 10px rgba(99,102,241,0.15); }
     .ship-tag.placed { background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.25); color:#86efac; text-decoration:line-through; opacity:0.6; }
+
+    .btn-ready { background:linear-gradient(135deg,#22c55e,#16a34a); color:white; font-size:15px; font-weight:700; border:none; border-radius:12px; padding:14px 32px; cursor:pointer; transition:all 0.2s; letter-spacing:0.5px; width:100%; max-width:320px; margin:8px auto 0; display:none; }
+    .btn-ready:hover { background:linear-gradient(135deg,#16a34a,#15803d); transform:scale(1.02); }
+    .btn-ready:active { transform:scale(0.97); }
+    .btn-ready.show { display:block; animation:fadeIn 0.3s ease; }
 
     .btn { font-family:inherit; font-size:14px; font-weight:600; border:none; border-radius:12px; padding:12px 24px; cursor:pointer; transition:all 0.2s ease; letter-spacing:0.3px; }
     .btn:active { transform:scale(0.97); }
@@ -139,10 +159,11 @@
   <div class="grid-wrapper" id="grid-area"></div>
   <div id="ship-list-area" class="ship-list" style="display:none"></div>
   <div class="controls" id="controls"></div>
+  <button class="btn-ready" id="btn-ready" onclick="submitShips()">⚓ Sẵn sàng chiến đấu!</button>
   <div id="scoreboard" style="display:none">
     <div class="scoreboard">
-      <div class="score-card" id="sc-p1"><div class="label">Bạn</div><div class="value" id="score-me">0</div><div class="sub"><span id="hits-me">0</span>/17 trúng</div></div>
-      <div class="score-card" id="sc-p2"><div class="label">Đối thủ</div><div class="value" id="score-opp">0</div><div class="sub"><span id="hits-opp">0</span>/17 trúng</div></div>
+      <div class="score-card" id="sc-p1"><div class="label">Bạn</div><div class="value" id="score-me">0</div><div class="sub"><span id="hits-me">0</span>/15 trúng</div></div>
+      <div class="score-card" id="sc-p2"><div class="label">Đối thủ</div><div class="value" id="score-opp">0</div><div class="sub"><span id="hits-opp">0</span>/15 trúng</div></div>
     </div>
     <div class="opponent-ships" id="opponent-ships"></div>
   </div>
@@ -186,16 +207,16 @@
 
 const API_URL = 'api.php';
 const GRID_SIZE = 10;
-const TOTAL_SHIP_CELLS = 17;
+const TOTAL_SHIP_CELLS = 15;
 const COLS = 'ABCDEFGHIJ';
 const POLL_MS = 1200;
 
 const SHIPS = [
-  { name: 'Tàu sân bay', size: 5, id: 'carrier' },
-  { name: 'Thiết giáp hạm', size: 4, id: 'battleship' },
-  { name: 'Tàu tuần dương', size: 3, id: 'cruiser' },
-  { name: 'Tàu ngầm', size: 3, id: 'submarine' },
-  { name: 'Tàu khu trục', size: 2, id: 'destroyer' },
+  { name: 'Thuyền 5', size: 5, id: 'thuyen5', img: 'img/thuyen5.PNG' },
+  { name: 'Thuyền 4', size: 4, id: 'thuyen4', img: 'img/thuyen4.PNG' },
+  { name: 'Thuyền 3', size: 3, id: 'thuyen3', img: 'img/thuyen3.PNG' },
+  { name: 'Thuyền 2', size: 2, id: 'thuyen2', img: 'img/thuyen2.PNG' },
+  { name: 'Thuyền 1', size: 1, id: 'thuyen1', img: 'img/thuyen1.PNG' },
 ];
 
 // ─── Player ID ───
@@ -357,6 +378,7 @@ function startPlacement() {
 
   document.getElementById('controls').innerHTML = `
     <button class="btn btn-outline" id="btn-rotate" onclick="toggleRotation()">🔄 Xoay (Ngang)</button>
+    <button class="btn btn-outline" onclick="undoLastShip()" id="btn-undo" style="display:none">↩ Hoàn tác</button>
     <button class="btn btn-danger" onclick="resetPlacement()">↺ Đặt lại</button>
   `;
   document.getElementById('ship-list-area').style.display = 'flex';
@@ -365,6 +387,7 @@ function startPlacement() {
   document.getElementById('bs-waiting-screen').classList.remove('active');
   document.getElementById('app').style.display = '';
   document.getElementById('surrender-area').style.display = 'none';
+  document.getElementById('btn-ready').classList.remove('show');
 }
 
 function renderPlacementGrid() {
@@ -439,12 +462,30 @@ function renderShipList() {
   const area = document.getElementById('ship-list-area');
   area.innerHTML = '';
   SHIPS.forEach((ship, idx) => {
-    const tag = document.createElement('div');
-    tag.className = 'ship-tag';
-    if (idx === currentShipIdx) tag.classList.add('active');
-    else if (idx < currentShipIdx) tag.classList.add('placed');
-    tag.textContent = `${ship.name} (${ship.size})`;
-    area.appendChild(tag);
+    const card = document.createElement('div');
+    card.className = 'ship-card';
+    if (idx === currentShipIdx) card.classList.add('active');
+    else if (idx < currentShipIdx) card.classList.add('placed');
+    else {
+      card.style.opacity = '0.4';
+      card.style.pointerEvents = 'none';
+    }
+    const img = document.createElement('img');
+    img.src = ship.img;
+    img.alt = ship.name;
+    img.draggable = false;
+    card.appendChild(img);
+    const label = document.createElement('div');
+    label.className = 'ship-label';
+    label.textContent = `${ship.name} (${ship.size})`;
+    card.appendChild(label);
+    // Allow clicking to select this ship (only if not placed yet)
+    if (idx >= currentShipIdx) {
+      card.addEventListener('click', () => {
+        if (idx === currentShipIdx) return; // already selected
+      });
+    }
+    area.appendChild(card);
   });
 }
 
@@ -469,6 +510,26 @@ function resetPlacement() {
   renderPlacementGrid();
   renderShipList();
   updatePlacementStatus();
+  document.getElementById('btn-ready').classList.remove('show');
+  const undoBtn = document.getElementById('btn-undo');
+  if (undoBtn) undoBtn.style.display = 'none';
+}
+
+function undoLastShip() {
+  if (currentShipIdx <= 0) return;
+  currentShipIdx--;
+  const lastPlaced = placedShips.pop();
+  // Remove ship from grid
+  if (lastPlaced) {
+    const cells = getShipCells(lastPlaced.start_row, lastPlaced.start_col, lastPlaced.size, lastPlaced.is_vertical);
+    cells.forEach(({ r, c }) => { myGrid[r][c].ship = null; });
+  }
+  renderPlacementGrid();
+  renderShipList();
+  updatePlacementStatus();
+  document.getElementById('btn-ready').classList.remove('show');
+  const undoBtn = document.getElementById('btn-undo');
+  if (undoBtn) undoBtn.style.display = currentShipIdx > 0 ? '' : 'none';
 }
 
 function getShipCells(r, c, size, vert) {
@@ -507,9 +568,15 @@ function placeShipAt(r, c) {
   currentShipIdx++;
   clearPreview();
 
+  const undoBtn = document.getElementById('btn-undo');
+  if (undoBtn) undoBtn.style.display = '';
+
   if (currentShipIdx >= SHIPS.length) {
-    // All ships placed — submit to server
-    submitShips();
+    // All ships placed — show confirm button
+    setStatus('✅ Đã đặt hết tàu! Bấm "Sẵn sàng" để bắt đầu', 'success');
+    document.getElementById('btn-ready').classList.add('show');
+    renderPlacementGrid();
+    renderShipList();
   } else {
     renderPlacementGrid();
     renderShipList();
@@ -521,6 +588,7 @@ async function submitShips() {
   setStatus('Đang gửi vị trí tàu<span class="waiting-dots"></span>', 'info');
   document.getElementById('controls').innerHTML = '';
   document.getElementById('ship-list-area').style.display = 'none';
+  document.getElementById('btn-ready').classList.remove('show');
 
   try {
     const data = await api('bs_place_ships', { room_id: roomId, ships: placedShips });

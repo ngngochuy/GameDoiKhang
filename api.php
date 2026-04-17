@@ -657,7 +657,7 @@ function bsPlaceShips()
     if ($room[$readyField]) return error('Bạn đã đặt tàu rồi');
 
     // Validate ships
-    $expectedSizes = [5, 4, 3, 3, 2];
+    $expectedSizes = [5, 4, 3, 2, 1];
     if (count($ships) !== 5) return error('Cần đặt 5 tàu');
 
     $grid = array_fill(0, 10, array_fill(0, 10, false));
@@ -865,7 +865,7 @@ function bsFire()
         $stmt->execute([$roomId]);
         $currentHits = (int)$stmt->fetchColumn();
 
-        if ($currentHits >= 17) {
+        if ($currentHits >= 15) {
             $pdo->prepare("UPDATE bs_rooms SET status = 'finished', winner = ? WHERE id = ?")->execute([$myRole, $roomId]);
             $result['won'] = true;
         }
