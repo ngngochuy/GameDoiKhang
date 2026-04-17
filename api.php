@@ -855,7 +855,7 @@ function bsFire()
     $stmt = $pdo->prepare("INSERT INTO bs_shots (room_id, player, `row`, `col`, is_hit, ship_id) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->execute([$roomId, $myRole, $row, $col, $isHit ? 1 : 0, $hitShipId]);
 
-    $result = ['ok' => true, 'is_hit' => $isHit, 'ship_sunk' => false, 'ship_name' => null, 'won' => false];
+    $result = ['ok' => true, 'is_hit' => $isHit, 'ship_id' => $hitShipId, 'ship_sunk' => false, 'ship_name' => null, 'won' => false];
 
     if ($isHit) {
         // Update hit count

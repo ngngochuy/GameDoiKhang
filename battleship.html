@@ -158,6 +158,10 @@
     .my-grid-preview .ship-overlay-img { opacity:0.6; }
     .my-grid-preview .cell.ship-start { overflow:visible !important; z-index:3; }
 
+    /* Hide ships mode */
+    .ships-hidden .cell.ship { background:var(--water); border-color:rgba(14,116,144,0.3); }
+    .ships-hidden .ship-overlay-img { display:none !important; }
+
     .my-grid-toggle { display:flex; align-items:center; gap:6px; justify-content:center; margin:6px 0 2px; cursor:pointer; color:var(--text-dim); font-size:11px; font-weight:600; transition:color 0.2s; }
     .my-grid-toggle:hover { color:var(--text-muted); }
     .my-grid-toggle svg { flex-shrink:0; }
@@ -216,11 +220,11 @@
     <div class="opponent-ships" id="opponent-ships"></div>
   </div>
 
-  <div id="my-grid-area" class="my-grid-preview" style="display:none"></div>
+  <div id="my-grid-area" class="my-grid-preview ships-hidden"></div>
   <div class="my-grid-toggle" id="my-grid-toggle" onclick="toggleMyGrid()" style="display:none">
     <svg id="eye-icon-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
     <svg id="eye-icon-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-    <span id="eye-label">Hiện bản đồ của bạn</span>
+    <span id="eye-label">Hiện tàu của bạn</span>
   </div>
 </div>
 
@@ -741,8 +745,8 @@ function enterBattle(room) {
   document.getElementById('bs-timer').style.display = 'flex';
   document.getElementById('btn-ready').classList.remove('show');
   document.getElementById('my-grid-toggle').style.display = 'flex';
-  document.getElementById('my-grid-area').style.display = 'none';
   myGridVisible = false;
+  document.getElementById('my-grid-area').classList.add('ships-hidden');
   updateEyeIcon();
 
   // Load existing shots
@@ -898,8 +902,7 @@ async function fireAt(r, c) {
     if (data.error) { setStatus(data.error, 'hit'); firing = false; return; }
 
     // Update local grid
-    attackGrid[r][c] = { hit: true, isHit: data.is_hit, shipId: null };
-    lastShotId++; // Will be corrected on next poll
+    attackGrid[r][c] = { hit: true, isHit: data.is_hit, shipId: data.ship_id || null };
 
     if (data.is_hit) {
       if (data.ship_sunk) {
@@ -913,9 +916,10 @@ async function fireAt(r, c) {
       isMyTurn = false;
     }
 
-    // Refresh from server
+    // Refresh from server — reload shots to get all ship_ids
     const roomData = await api('bs_get_room', { room_id: roomId });
     if (roomData.room) {
+      await loadAllShots(roomData.room);
       renderBattleGrids(roomData.room);
       updateScoreboard(roomData.room);
       if (roomData.room.status === 'finished') {
@@ -961,14 +965,14 @@ function dismissOverlay() {
 
 function toggleMyGrid() {
   myGridVisible = !myGridVisible;
-  document.getElementById('my-grid-area').style.display = myGridVisible ? '' : 'none';
+  document.getElementById('my-grid-area').classList.toggle('ships-hidden', !myGridVisible);
   updateEyeIcon();
 }
 
 function updateEyeIcon() {
   document.getElementById('eye-icon-off').style.display = myGridVisible ? 'none' : '';
   document.getElementById('eye-icon-on').style.display = myGridVisible ? '' : 'none';
-  document.getElementById('eye-label').textContent = myGridVisible ? 'Ẩn bản đồ của bạn' : 'Hiện bản đồ của bạn';
+  document.getElementById('eye-label').textContent = myGridVisible ? 'Ẩn tàu của bạn' : 'Hiện tàu của bạn';
 }
 
 function backToLobby() {
