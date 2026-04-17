@@ -55,7 +55,36 @@
     .cell:hover:not(.hit):not(.miss):not(.disabled):not(.sunk) { background:var(--water-light); border-color:rgba(14,116,144,0.6); transform:scale(1.05); z-index:1; }
     .cell.disabled { cursor:default; }
     .cell.ship { background:var(--ship); border-color:rgba(99,102,241,0.5); }
-    .cell.ship img { width:100%; height:100%; object-fit:contain; filter:brightness(0) invert(1); pointer-events:none; }
+    .cell.ship-start { overflow:visible !important; z-index:3; }
+    .ship-overlay-img {
+      position:absolute; top:0; left:0; pointer-events:none;
+      object-fit:fill; filter:brightness(0) invert(1); opacity:0.8;
+    }
+    .ship-overlay-img.faded { opacity:0.25; z-index:1; }
+
+    /* Timer bar */
+    .timer-wrap { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
+    .timer-track { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+    .timer-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.3s linear; }
+    .timer-fill.warning { background:#f59e0b; }
+    .timer-fill.danger { background:#ef4444; }
+    .timer-text { font-size:11px; font-weight:600; color:var(--text-dim); width:28px; text-align:right; font-variant-numeric:tabular-nums; }
+
+    /* Header action buttons */
+    .header-actions { display:flex; align-items:center; gap:4px; }
+    .header-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px; border:none; cursor:pointer; transition:all 0.2s; font-family:inherit; }
+    .header-btn-pause { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+    .header-btn-pause:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+    .header-btn-surrender { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#f87171; }
+    .header-btn-surrender:hover { background:rgba(239,68,68,0.2); }
+
+    /* Pause modal */
+    .modal-pause { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); animation:fadeIn 0.2s ease; }
+    .modal-pause.active { display:flex; }
+    .modal-pause-content { background:var(--bg-card); border:1px solid var(--border); border-radius:20px; padding:32px; width:100%; max-width:340px; text-align:center; }
+    .modal-pause-content h2 { font-size:18px; font-weight:700; margin-bottom:8px; }
+    .modal-pause-content p { color:var(--text-muted); font-size:13px; margin-bottom:24px; }
+
     .cell.ship-preview { background:rgba(99,102,241,0.4); border-color:rgba(99,102,241,0.6); }
     .cell.ship-preview-invalid { background:rgba(239,68,68,0.3); border-color:rgba(239,68,68,0.5); }
     .cell.hit { background:var(--hit); border-color:rgba(239,68,68,0.6); animation:hitPulse 0.4s ease; }
@@ -154,8 +183,20 @@
       Sảnh chính
     </a>
     <h1>⚓ Hải Chiến</h1>
+    <div class="header-actions" id="battle-actions" style="display:none">
+      <button class="header-btn header-btn-pause" id="btn-bs-pause" onclick="bsPause()" title="Tạm dừng">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+      </button>
+      <button class="header-btn header-btn-surrender" id="btn-bs-surrender2" onclick="confirmSurrender()" title="Đầu hàng">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      </button>
+    </div>
   </div>
   <div class="status-bar" id="status">Đang kết nối<span class="waiting-dots"></span></div>
+  <div class="timer-wrap" id="bs-timer" style="display:none">
+    <div class="timer-track"><div class="timer-fill" id="bs-timer-bar" style="width:100%"></div></div>
+    <span class="timer-text" id="bs-timer-text">60s</span>
+  </div>
   <div class="grid-wrapper" id="grid-area"></div>
   <div id="ship-list-area" class="ship-list" style="display:none"></div>
   <div class="controls" id="controls"></div>
@@ -169,12 +210,6 @@
   </div>
 
   <div id="my-grid-area" class="my-grid-preview"></div>
-  <div id="surrender-area" style="display:none">
-    <button class="btn-surrender" id="btn-surrender" onclick="confirmSurrender()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      Đầu hàng
-    </button>
-  </div>
 </div>
 
 <!-- WAITING SCREEN (same design as GMS) -->
@@ -190,6 +225,18 @@
       <div class="room-code" id="bs-room-code">---</div>
     </div>
     <button class="btn-back" onclick="cancelBsRoom()">Trở về</button>
+  </div>
+</div>
+
+<!-- PAUSE MODAL -->
+<div class="modal-pause" id="bs-pause-modal">
+  <div class="modal-pause-content">
+    <div style="width:48px;height:48px;margin:0 auto 12px;border-radius:50%;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;border:1px solid var(--border)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+    </div>
+    <h2>Trò chơi tạm dừng</h2>
+    <p id="bs-pause-text">Cả hai cùng nhấn Tiếp tục để chơi tiếp.</p>
+    <button class="btn btn-primary" style="width:100%;padding:14px" onclick="bsResume()">Tiếp tục chơi</button>
   </div>
 </div>
 
@@ -243,6 +290,10 @@ let pollInterval = null;
 let lastShotId = 0;
 let overlayCallback = null;
 let firing = false;
+let bsTimerRAF = null;
+let bsTurnStart = null;
+let bsIsPaused = false;
+const BS_TURN_DURATION = 60;
 
 // ============================================
 // API HELPER
@@ -386,7 +437,8 @@ function startPlacement() {
   document.getElementById('my-grid-area').innerHTML = '';
   document.getElementById('bs-waiting-screen').classList.remove('active');
   document.getElementById('app').style.display = '';
-  document.getElementById('surrender-area').style.display = 'none';
+  document.getElementById('battle-actions').style.display = 'none';
+  document.getElementById('bs-timer').style.display = 'none';
   document.getElementById('btn-ready').classList.remove('show');
 }
 
@@ -401,6 +453,41 @@ function renderPlacementGrid() {
   wrapper.appendChild(label);
   wrapper.appendChild(buildGridDOM(myGrid, 'placement'));
   area.appendChild(wrapper);
+  // Add ship image overlays on grid
+  addShipOverlays('#grid-area', placedShips);
+}
+
+function addShipOverlays(containerSelector, ships, faded) {
+  if (!ships || ships.length === 0) return;
+  ships.forEach(ship => {
+    const shipDef = SHIPS.find(s => s.id === ship.ship_id || s.id === ship.id);
+    if (!shipDef) return;
+    const sr = parseInt(ship.start_row), sc = parseInt(ship.start_col);
+    const startCell = document.querySelector(`${containerSelector} .cell[data-r="${sr}"][data-c="${sc}"]`);
+    if (!startCell) return;
+
+    startCell.classList.add('ship-start');
+
+    const img = document.createElement('img');
+    img.src = shipDef.img;
+    img.className = 'ship-overlay-img' + (faded ? ' faded' : '');
+    img.draggable = false;
+
+    const sz = parseInt(ship.size);
+    const sizeCalc = sz === 1 ? 'var(--cell-size)' : `calc(${sz} * (var(--cell-size) + 2px) - 2px)`;
+
+    if (ship.is_vertical) {
+      img.style.width = sizeCalc;
+      img.style.height = '100%';
+      img.style.transformOrigin = '0 0';
+      img.style.transform = 'rotate(90deg) translateY(-100%)';
+    } else {
+      img.style.width = sizeCalc;
+      img.style.height = '100%';
+    }
+
+    startCell.appendChild(img);
+  });
 }
 
 function buildGridDOM(grid, mode, isSmall) {
@@ -630,7 +717,9 @@ function enterBattle(room) {
   document.getElementById('controls').innerHTML = '';
   document.getElementById('bs-waiting-screen').classList.remove('active');
   document.getElementById('app').style.display = '';
-  document.getElementById('surrender-area').style.display = 'block';
+  document.getElementById('battle-actions').style.display = 'flex';
+  document.getElementById('bs-timer').style.display = 'flex';
+  document.getElementById('btn-ready').classList.remove('show');
 
   // Load existing shots
   loadAllShots(room).then(() => {
@@ -687,6 +776,12 @@ function renderBattleGrids(room) {
   mw.appendChild(ml);
   mw.appendChild(buildGridDOM(myGrid, 'myview', true));
   myArea.appendChild(mw);
+  // Add ship overlays on my grid preview
+  addShipOverlays('#my-grid-area', myShipsData.map(s => ({
+    ship_id: s.ship_id, size: parseInt(s.size),
+    start_row: parseInt(s.start_row), start_col: parseInt(s.start_col),
+    is_vertical: !!parseInt(s.is_vertical)
+  })));
 
   // Opponent ships status
   if (room && room.opponent_ships) {
@@ -699,7 +794,7 @@ function renderBattleGrids(room) {
       osh.appendChild(tag);
     });
 
-    // Update sunk styling on attack grid
+    // Update sunk styling on attack grid + show sunk ship images
     const sunkIds = new Set(room.opponent_ships.filter(s => parseInt(s.is_sunk)).map(s => s.ship_id));
     document.querySelectorAll('#grid-area .cell.hit').forEach(cell => {
       const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
@@ -708,16 +803,48 @@ function renderBattleGrids(room) {
         cell.classList.add('sunk');
       }
     });
+
+    // Show faded ship images for sunk ships on attack grid
+    const sunkShipOverlays = room.opponent_ships.filter(s => parseInt(s.is_sunk)).map(s => {
+      const cells = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (attackGrid[r][c].shipId === s.ship_id && attackGrid[r][c].hit) cells.push({ r, c });
+        }
+      }
+      if (cells.length === 0) return null;
+      const minR = Math.min(...cells.map(p => p.r)), minC = Math.min(...cells.map(p => p.c));
+      const isVert = cells.length > 1 && cells.every(p => p.c === minC);
+      return { ship_id: s.ship_id, size: parseInt(s.size), start_row: minR, start_col: minC, is_vertical: isVert };
+    }).filter(Boolean);
+    addShipOverlays('#grid-area', sunkShipOverlays, true);
   }
 }
 
 function updateTurnStatus(room) {
   isMyTurn = (room.current_turn === myRole);
   if (room.status === 'finished') return;
+
+  // Check pause
+  if (room.is_paused) {
+    bsIsPaused = true;
+    document.getElementById('bs-pause-modal').classList.add('active');
+  } else {
+    bsIsPaused = false;
+    document.getElementById('bs-pause-modal').classList.remove('active');
+  }
+
   if (isMyTurn) {
     setStatus('🎯 Lượt bắn của bạn — Chọn ô để bắn!', 'info');
+    document.getElementById('bs-timer').style.display = 'flex';
   } else {
     setStatus('⏳ Đang chờ đối thủ bắn<span class="waiting-dots"></span>', 'waiting');
+    document.getElementById('bs-timer').style.display = 'none';
+  }
+
+  // Start timer from server turn_start_time
+  if (room.turn_start_time && isMyTurn && !bsIsPaused) {
+    startBsTimer(room.turn_start_time);
   }
 }
 
@@ -846,6 +973,58 @@ async function confirmSurrender() {
     setStatus('Lỗi kết nối', 'hit');
     btn.disabled = false;
     btn.style.opacity = '1';
+  }
+}
+
+// ============================================
+// TIMER
+// ============================================
+function startBsTimer(serverStart) {
+  if (bsTimerRAF) cancelAnimationFrame(bsTimerRAF);
+  bsTurnStart = serverStart;
+  const bar = document.getElementById('bs-timer-bar');
+  const text = document.getElementById('bs-timer-text');
+  function tick() {
+    if (bsIsPaused) return;
+    const elapsed = (Date.now() - bsTurnStart) / 1000;
+    const remaining = Math.max(0, BS_TURN_DURATION - elapsed);
+    bar.style.width = (remaining / BS_TURN_DURATION) * 100 + '%';
+    text.textContent = Math.ceil(remaining) + 's';
+    bar.classList.remove('warning', 'danger');
+    if (remaining <= 5) bar.classList.add('danger');
+    else if (remaining <= 10) bar.classList.add('warning');
+    if (remaining <= 0 && isMyTurn) {
+      // Auto skip turn (server will handle via polling)
+      return;
+    }
+    bsTimerRAF = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// ============================================
+// PAUSE / RESUME
+// ============================================
+async function bsPause() {
+  try {
+    const data = await api('bs_pause', { room_id: roomId });
+    if (data.error) { setStatus(data.error, 'hit'); return; }
+    bsIsPaused = true;
+    document.getElementById('bs-pause-modal').classList.add('active');
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối', 'hit');
+  }
+}
+
+async function bsResume() {
+  try {
+    const data = await api('bs_resume', { room_id: roomId });
+    if (data.error) { setStatus(data.error, 'hit'); return; }
+    document.getElementById('bs-pause-text').textContent = 'Đang chờ đối thủ xác nhận...';
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi kết nối', 'hit');
   }
 }
 

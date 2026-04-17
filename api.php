@@ -104,6 +104,12 @@ switch ($action) {
     case 'bs_surrender':
         bsSurrender();
         break;
+    case 'bs_pause':
+        bsBsPause();
+        break;
+    case 'bs_resume':
+        bsBsResume();
+        break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
         echo json_encode(['ok' => true, 'info' => 'API ready']);
@@ -583,6 +589,17 @@ try {
     ) ENGINE=InnoDB");
 } catch (PDOException $e) { /* tables already exist */ }
 
+// ─── Auto Migration for Battleship pause/timer ───
+try {
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN turn_start_time BIGINT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN is_paused TINYINT(1) DEFAULT 0");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN turn_pause_time BIGINT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN player1_pauses INT DEFAULT 5");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN player2_pauses INT DEFAULT 5");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN resume_request_p1 BIGINT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN resume_request_p2 BIGINT DEFAULT NULL");
+} catch (PDOException $e) { /* cols exist */ }
+
 // ============================================
 // BS: TẠO PHÒNG
 // ============================================
@@ -702,7 +719,8 @@ function bsPlaceShips()
     $updated = $stmt->fetch();
 
     if ($updated['player1_ready'] && $updated['player2_ready']) {
-        $pdo->prepare("UPDATE bs_rooms SET status = 'playing', current_turn = 'player1' WHERE id = ?")->execute([$roomId]);
+        $now = round(microtime(true) * 1000);
+        $pdo->prepare("UPDATE bs_rooms SET status = 'playing', current_turn = 'player1', turn_start_time = ? WHERE id = ?")->execute([$now, $roomId]);
     }
 
     echo json_encode(['ok' => true]);
@@ -738,6 +756,17 @@ function bsGetRoom()
     $stmt->execute([$roomId, $myRole]);
     $myShips = $stmt->fetchAll();
 
+    // Auto-skip turn if timeout (> 61 seconds)
+    $now = round(microtime(true) * 1000);
+    if ($room['status'] === 'playing' && !$room['is_paused'] && $room['turn_start_time']) {
+        if (($now - $room['turn_start_time']) > 61000) {
+            $newTurn = ($room['current_turn'] === 'player1') ? 'player2' : 'player1';
+            $pdo->exec("UPDATE bs_rooms SET current_turn = '$newTurn', turn_start_time = $now WHERE id = " . (int)$roomId);
+            $room['current_turn'] = $newTurn;
+            $room['turn_start_time'] = $now;
+        }
+    }
+
     echo json_encode([
         'ok' => true,
         'room' => [
@@ -754,6 +783,8 @@ function bsGetRoom()
             'my_role' => $myRole,
             'my_ships' => $myShips,
             'opponent_ships' => $opponentShips,
+            'turn_start_time' => $room['turn_start_time'] ? (int)$room['turn_start_time'] : null,
+            'is_paused' => isset($room['is_paused']) ? (bool)$room['is_paused'] : false,
         ]
     ]);
 }
@@ -873,7 +904,8 @@ function bsFire()
     } else {
         // MISS = switch turn
         $nextTurn = ($myRole === 'player1') ? 'player2' : 'player1';
-        $pdo->prepare("UPDATE bs_rooms SET current_turn = ? WHERE id = ?")->execute([$nextTurn, $roomId]);
+        $now = round(microtime(true) * 1000);
+        $pdo->prepare("UPDATE bs_rooms SET current_turn = ?, turn_start_time = ? WHERE id = ?")->execute([$nextTurn, $now, $roomId]);
     }
 
     echo json_encode($result);
@@ -934,6 +966,71 @@ function bsSurrender()
     $pdo->prepare("UPDATE bs_rooms SET status = 'finished', winner = ? WHERE id = ?")->execute([$winner, $roomId]);
 
     echo json_encode(['ok' => true, 'winner' => $winner]);
+}
+
+// ============================================
+// BS: TẠM DỪNG
+// ============================================
+function bsBsPause()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing') return error('Không thể tạm dừng');
+    if ($room['is_paused']) return error('Đang dừng rồi');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng');
+
+    $pausesLeft = isset($room[$myRole . '_pauses']) ? (int)$room[$myRole . '_pauses'] : 5;
+    if ($pausesLeft <= 0) return error('Bạn đã hết số lần tạm dừng');
+
+    $now = round(microtime(true) * 1000);
+    $pdo->prepare("UPDATE bs_rooms SET is_paused = 1, {$myRole}_pauses = {$myRole}_pauses - 1, turn_pause_time = ?, resume_request_p1 = NULL, resume_request_p2 = NULL WHERE id = ?")->execute([$now, $roomId]);
+
+    echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// BS: TIẾP TỤC
+// ============================================
+function bsBsResume()
+{
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing' || !$room['is_paused']) return error('Không hợp lệ');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng');
+
+    $now = round(microtime(true) * 1000);
+    $reqField = 'resume_request_' . ($myRole === 'player1' ? 'p1' : 'p2');
+    $otherReqField = 'resume_request_' . ($myRole === 'player1' ? 'p2' : 'p1');
+
+    $pdo->prepare("UPDATE bs_rooms SET $reqField = ? WHERE id = ?")->execute([$now, $roomId]);
+
+    $stmt = $pdo->prepare("SELECT * FROM bs_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $updatedRoom = $stmt->fetch();
+
+    $otherTime = $updatedRoom[$otherReqField];
+    if ($otherTime && ($now - $otherTime) <= 10000) {
+        $pauseDuration = $now - $updatedRoom['turn_pause_time'];
+        $pdo->prepare("UPDATE bs_rooms SET is_paused = 0, turn_start_time = turn_start_time + ?, turn_pause_time = NULL, resume_request_p1 = NULL, resume_request_p2 = NULL WHERE id = ?")->execute([$pauseDuration, $roomId]);
+    }
+
+    echo json_encode(['ok' => true]);
 }
 
 // ============================================
