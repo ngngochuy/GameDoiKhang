@@ -345,7 +345,7 @@ async function submitGuess() {
     myGuessCount++;
 
     if (result === DIGITS) {
-      showResultModal('🏆', 'Chính Xác!',
+      showResultModal('win', 'Chính Xác!',
         `Bạn đã đoán đúng sau ${myGuessCount} lượt!`,
         `Số bí mật: <span class="text-green-600 font-bold text-xl tracking-wider">${liveTestSecret}</span>`
       );
@@ -673,16 +673,44 @@ function handleGameFinished(room) {
   const iWon = room.winner === myRole;
 
   if (iWon) {
-    showResultModal('🏆', 'Chiến Thắng!', 'Bạn đã giải mã thành công!', '');
+    showResultModal('win', 'Chiến Thắng!', 'Bạn đã giải mã thành công!', '');
   } else {
-    showResultModal('😞', 'Thua Cuộc!', 'Đối thủ giải mã trước!', '');
+    showResultModal('lose', 'Thua Cuộc!', 'Đối thủ giải mã trước!', '');
   }
 }
 
 // ============================================
 // MODAL & HELPERS
 // ============================================
-function showResultModal(emoji, title, desc, secretHTML) {
+function showResultModal(type, title, desc, secretHTML) {
+  const overlay = document.getElementById('modal-result');
+  const content = document.getElementById('modal-content');
+  const emojiBg = document.getElementById('result-emoji-bg');
+  const titleEl = document.getElementById('result-title');
+  
+  // Reset classes
+  if (overlay) overlay.className = 'modal-overlay fixed inset-0 z-50 flex items-center justify-center px-6';
+  if (content) content.className = 'modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 relative overflow-hidden';
+  if (emojiBg) emojiBg.className = 'result-icon-bg';
+  if (titleEl) titleEl.className = 'text-2xl font-bold mb-2';
+
+  let emoji = '🎮';
+  if (type === 'win') {
+    if (overlay) overlay.classList.add('win-modal');
+    if (content) content.classList.add('win-content');
+    if (emojiBg) emojiBg.classList.add('win-icon-bg');
+    if (titleEl) titleEl.classList.add('win-title');
+    emoji = '🏆';
+  } else if (type === 'lose') {
+    if (overlay) overlay.classList.add('lose-modal');
+    if (content) content.classList.add('lose-content');
+    if (emojiBg) emojiBg.classList.add('lose-icon-bg');
+    if (titleEl) titleEl.classList.add('lose-title');
+    emoji = '💀';
+  } else {
+    emoji = type;
+  }
+
   document.getElementById('result-emoji').textContent = emoji;
   document.getElementById('result-title').textContent = title;
   document.getElementById('result-desc').textContent = desc;
@@ -701,7 +729,7 @@ async function gmsSurrender() {
     if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.style.opacity = '1'; return; }
     stopPolling();
     if (timerRAF) cancelAnimationFrame(timerRAF);
-    showResultModal('🏳️', 'Đã Đầu Hàng', 'Bạn đã đầu hàng. Đối thủ thắng trận này.', '');
+    showResultModal('lose', 'Đã Đầu Hàng', 'Bạn đã đầu hàng. Đối thủ thắng trận này.', '');
   } catch (err) {
     console.error(err);
     showToast('Lỗi kết nối', 'error');

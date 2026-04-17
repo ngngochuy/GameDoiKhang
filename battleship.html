@@ -183,6 +183,22 @@
     .btn-back { background:transparent; color:var(--text-muted); font-weight:500; border-radius:12px; border:1.5px solid var(--border); cursor:pointer; transition:all 0.2s ease; font-size:14px; padding:10px 32px; font-family:inherit; }
     .btn-back:hover { border-color:#334155; color:var(--text); }
     .btn-back:active { transform:scale(0.97); }
+    
+    /* Win/Loss Modal Styles */
+    .modal-overlay.win-modal { background: radial-gradient(circle at center, rgba(34,197,94,0.15) 0%, rgba(0,0,0,0.85) 100%); }
+    .win-content { border-color: rgba(34,197,94,0.4) !important; box-shadow: 0 0 40px rgba(34,197,94,0.15), inset 0 0 20px rgba(34,197,94,0.05); background: linear-gradient(180deg, #111827 0%, rgba(17,24,39,0.95) 100%) !important; }
+    .win-title { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(34,197,94,0.3); }
+
+    .modal-overlay.lose-modal { background: radial-gradient(circle at center, rgba(239,68,68,0.15) 0%, rgba(0,0,0,0.85) 100%); }
+    .lose-content { border-color: rgba(239,68,68,0.4) !important; box-shadow: 0 0 40px rgba(239,68,68,0.15), inset 0 0 20px rgba(239,68,68,0.05); background: linear-gradient(180deg, #111827 0%, rgba(17,24,39,0.95) 100%) !important; }
+    .lose-title { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .result-icon-wrapper { position: relative; width: 80px; height: 80px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; }
+    .result-icon-bg { position: absolute; inset: 0; border-radius: 50%; opacity: 0.2; animation: pulseRing 2s infinite; }
+    .win-icon-bg { background: #22c55e; }
+    .lose-icon-bg { background: #ef4444; }
+    .result-icon-inner { position: relative; z-index: 2; font-size: 40px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); animation: modalPop2 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards; transform-origin: center; }
+    @keyframes modalPop2 { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -256,11 +272,16 @@
   </div>
 </div>
 
-<div class="overlay hidden" id="overlay">
-  <div class="emoji" id="overlay-emoji">🔄</div>
-  <h2 id="overlay-title"></h2>
-  <p id="overlay-desc"></p>
-  <button class="btn btn-primary" id="overlay-btn" onclick="dismissOverlay()">OK</button>
+<div class="overlay hidden modal-overlay" id="overlay">
+  <div id="overlay-content" class="modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 relative overflow-hidden">
+    <div class="result-icon-wrapper">
+      <div id="overlay-emoji-bg" class="result-icon-bg"></div>
+      <div id="overlay-emoji" class="result-icon-inner text-5xl"></div>
+    </div>
+    <h2 id="overlay-title" class="text-2xl font-bold mb-2"></h2>
+    <p id="overlay-desc" class="text-slate-400 text-sm mb-8 px-2 leading-relaxed"></p>
+    <button class="btn btn-primary w-full py-4 text-base tracking-wide" id="overlay-btn" onclick="dismissOverlay()">OK</button>
+  </div>
 </div>
 
 <script>
@@ -949,13 +970,41 @@ function setStatus(html, type) {
   el.className = 'status-bar' + (type ? ' ' + type : '');
 }
 
-function showOverlay(emoji, title, desc, btnText, callback) {
+function showOverlay(type, title, desc, btnText, callback) {
+  const overlay = document.getElementById('overlay');
+  const content = document.getElementById('overlay-content');
+  const emojiBg = document.getElementById('overlay-emoji-bg');
+  const titleEl = document.getElementById('overlay-title');
+
+  // Reset classes
+  if (overlay) overlay.className = 'overlay modal-overlay';
+  if (content) content.className = 'modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 relative overflow-hidden';
+  if (emojiBg) emojiBg.className = 'result-icon-bg';
+  if (titleEl) titleEl.className = 'text-2xl font-bold mb-2';
+
+  let emoji = '🎮';
+  if (type === 'win' || type === '🏆') {
+    if (overlay) overlay.classList.add('win-modal');
+    if (content) content.classList.add('win-content');
+    if (emojiBg) emojiBg.classList.add('win-icon-bg');
+    if (titleEl) titleEl.classList.add('win-title');
+    emoji = '🏆';
+  } else if (type === 'lose' || type === '😞' || type === '🏳️') {
+    if (overlay) overlay.classList.add('lose-modal');
+    if (content) content.classList.add('lose-content');
+    if (emojiBg) emojiBg.classList.add('lose-icon-bg');
+    if (titleEl) titleEl.classList.add('lose-title');
+    emoji = '💀';
+  } else {
+    emoji = type;
+  }
+
   document.getElementById('overlay-emoji').textContent = emoji;
-  document.getElementById('overlay-title').textContent = title;
+  titleEl.textContent = title;
   document.getElementById('overlay-desc').textContent = desc;
   document.getElementById('overlay-btn').textContent = btnText;
   overlayCallback = callback;
-  document.getElementById('overlay').classList.remove('hidden');
+  overlay.classList.remove('hidden');
 }
 
 function dismissOverlay() {
