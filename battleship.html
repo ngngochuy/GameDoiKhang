@@ -15,7 +15,18 @@
       --accent: #3b82f6; --accent-glow: rgba(59,130,246,0.15);
       --ship: #6366f1; --hit: #ef4444; --miss: #475569;
       --water: #0c4a6e; --water-light: #0e7490;
+      /* --cell-size: min(8.5vw, 36px); */
       --cell-size: min(8.5vw, 36px);
+    }
+    :root[data-theme="light"] {
+      --bg: #f8fafc; --bg-card: #ffffff; --bg-cell: #f1f5f9; --border: #e2e8f0;
+      --text: #0f172a; --text-muted: #64748b; --text-dim: #94a3b8;
+      --accent-glow: rgba(59,130,246,0.2);
+      --miss: #94a3b8;
+      --water: #e0f2fe; --water-light: #bae6fd;
+    }
+    :root[data-theme="light"] .modal-content {
+      background: #ffffff;
     }
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Space Grotesk',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
     body { background:var(--bg); color:var(--text); min-height:100vh; user-select:none; -webkit-user-select:none; }
@@ -225,8 +236,10 @@
       Sảnh chính
     </a>
     <h1>⚓ Hải Chiến</h1>
-    <div class="header-actions" id="battle-actions" style="display:none">
-      <button class="header-btn header-btn-pause" id="btn-bs-pause" onclick="bsPause()" title="Tạm dừng">
+    <div style="display: flex; gap: 4px; align-items: center;">
+      <button id="theme-toggle-btn" class="header-btn" onclick="toggleTheme()" style="background:transparent; color:var(--text-muted); width: auto; padding: 0 8px;"></button>
+      <div class="header-actions" id="battle-actions" style="display:none">
+        <button class="header-btn header-btn-pause" id="btn-bs-pause" onclick="bsPause()" title="Tạm dừng">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
       </button>
       <button class="header-btn header-btn-surrender" id="btn-bs-surrender2" onclick="confirmSurrender()" title="Đầu hàng">
@@ -299,6 +312,7 @@
   </div>
 </div>
 
+<script src="theme.js"></script>
 <script>
 // ============================================
 // 🚢 BATTLESHIP ONLINE — PHP/MySQL Backend
