@@ -378,15 +378,9 @@ async function submitGuess() {
 // ============================================
 function checkGuessLocal(guess, secret) {
   let correct = 0;
-  const secretUsed = Array(DIGITS).fill(false);
   for (let i = 0; i < DIGITS; i++) {
-    for (let j = 0; j < DIGITS; j++) {
-      if (secretUsed[j]) continue;
-      if (guess[i] === secret[j]) {
-        correct++;
-        secretUsed[j] = true;
-        break;
-      }
+    if (guess[i] === secret[i]) {
+      correct++;
     }
   }
   return correct;

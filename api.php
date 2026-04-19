@@ -525,17 +525,10 @@ function surrender()
 function checkGuess($guess, $secret)
 {
     $correct = 0;
-    $secretUsed = array_fill(0, 4, false);
 
     for ($i = 0; $i < 4; $i++) {
-        for ($j = 0; $j < 4; $j++) {
-            if ($secretUsed[$j])
-                continue;
-            if ($guess[$i] === $secret[$j]) {
-                $correct++;
-                $secretUsed[$j] = true;
-                break;
-            }
+        if ($guess[$i] === $secret[$i]) {
+            $correct++;
         }
     }
     return $correct;
