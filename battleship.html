@@ -140,11 +140,6 @@
     .btn-danger { background:rgba(239,68,68,0.15); color:var(--hit); border:1px solid rgba(239,68,68,0.2); }
     .controls { display:flex; gap:8px; justify-content:center; margin:12px 0; flex-wrap:wrap; }
 
-    .overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.92); backdrop-filter:blur(20px); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; animation:fadeIn 0.3s ease; }
-    .overlay.hidden { display:none; }
-    .overlay h2 { font-size:24px; font-weight:700; margin-bottom:8px; }
-    .overlay p { color:var(--text-muted); font-size:14px; margin-bottom:32px; }
-    .overlay .emoji { font-size:56px; margin-bottom:16px; }
     @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
     .scoreboard { display:flex; gap:12px; justify-content:center; margin:8px 0 12px; }
@@ -194,37 +189,32 @@
     .btn-back { background:transparent; color:var(--text-muted); font-weight:500; border-radius:12px; border:1.5px solid var(--border); cursor:pointer; transition:all 0.2s ease; font-size:14px; padding:10px 32px; font-family:inherit; }
     .btn-back:hover { border-color:#334155; color:var(--text); }
     .btn-back:active { transform:scale(0.97); }
-    
-    /* Win/Loss Modal Styles */
+
+    /* Win/Loss Modal — synced with GMS design */
+    .modal-overlay { position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,0.6); backdrop-filter:blur(12px); animation:fadeIn 0.3s ease; }
+    .modal-overlay.active { display:flex; }
     .modal-overlay.win-modal { background: radial-gradient(circle at center, rgba(34,197,94,0.15) 0%, rgba(0,0,0,0.85) 100%); }
-    .win-content { border-color: rgba(34,197,94,0.4) !important; box-shadow: 0 0 40px rgba(34,197,94,0.15), inset 0 0 20px rgba(34,197,94,0.05); background: linear-gradient(180deg, #111827 0%, rgba(17,24,39,0.95) 100%) !important; }
-    .win-title { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(34,197,94,0.3); }
-
     .modal-overlay.lose-modal { background: radial-gradient(circle at center, rgba(239,68,68,0.15) 0%, rgba(0,0,0,0.85) 100%); }
+    .modal-content { background: var(--bg-card); border-radius: 24px; padding: 32px; width: 100%; max-width: 384px; text-align: center; border: 1px solid var(--border); position: relative; overflow: hidden; animation: modalPop 0.3s cubic-bezier(0.16,1,0.3,1); }
+    @keyframes modalPop { from{opacity:0;transform:scale(0.95) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .win-content { border-color: rgba(34,197,94,0.4) !important; box-shadow: 0 0 40px rgba(34,197,94,0.15), inset 0 0 20px rgba(34,197,94,0.05); background: linear-gradient(180deg, #111827 0%, rgba(17,24,39,0.95) 100%) !important; }
     .lose-content { border-color: rgba(239,68,68,0.4) !important; box-shadow: 0 0 40px rgba(239,68,68,0.15), inset 0 0 20px rgba(239,68,68,0.05); background: linear-gradient(180deg, #111827 0%, rgba(17,24,39,0.95) 100%) !important; }
+    .win-title { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(34,197,94,0.3); }
     .lose-title { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-
+    :root[data-theme="light"] .modal-overlay.win-modal { background: radial-gradient(circle at center, rgba(34,197,94,0.15) 0%, rgba(255,255,255,0.85) 100%); }
+    :root[data-theme="light"] .win-content { background: #ffffff !important; }
+    :root[data-theme="light"] .modal-overlay.lose-modal { background: radial-gradient(circle at center, rgba(239,68,68,0.15) 0%, rgba(255,255,255,0.85) 100%); }
+    :root[data-theme="light"] .lose-content { background: #ffffff !important; }
+    
     .result-icon-wrapper { position: relative; width: 80px; height: 80px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; }
     .result-icon-bg { position: absolute; inset: 0; border-radius: 50%; opacity: 0.2; animation: pulseRing 2s infinite; }
     .win-icon-bg { background: #22c55e; }
     .lose-icon-bg { background: #ef4444; }
     .result-icon-inner { position: relative; z-index: 2; font-size: 40px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); animation: modalPop2 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards; transform-origin: center; }
     @keyframes modalPop2 { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-    
-    /* Result Modal Fallback Classes */
-    .modal-content { background: #111827; border-radius: 24px; padding: 32px; width: 100%; max-width: 384px; text-align: center; border: 1px solid #1e293b; position: relative; overflow: hidden; }
-    .w-full { width: 100%; }
-    .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-    .text-base { font-size: 1rem; line-height: 1.5rem; }
-    .tracking-wide { letter-spacing: 0.025em; }
-    .text-5xl { font-size: 3rem; line-height: 1; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-8 { margin-bottom: 2rem; }
-    .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-    .leading-relaxed { line-height: 1.625; }
-    .text-slate-400 { color: #94a3b8; }
-    .font-bold { font-weight: 700; }
-    .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+    .modal-result-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .modal-result-desc { color: #94a3b8; font-size: 0.875rem; margin-bottom: 2rem; padding: 0 0.5rem; line-height: 1.625; }
+    .modal-result-btn { width:100%; padding:14px 0; font-size:1rem; letter-spacing:0.025em; }
   </style>
 </head>
 <body>
@@ -300,15 +290,15 @@
   </div>
 </div>
 
-<div class="overlay hidden modal-overlay" id="overlay">
-  <div id="overlay-content" class="modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 relative overflow-hidden">
+<div class="modal-overlay" id="overlay">
+  <div id="overlay-content" class="modal-content">
     <div class="result-icon-wrapper">
       <div id="overlay-emoji-bg" class="result-icon-bg"></div>
-      <div id="overlay-emoji" class="result-icon-inner text-5xl"></div>
+      <div id="overlay-emoji" class="result-icon-inner"></div>
     </div>
-    <h2 id="overlay-title" class="text-2xl font-bold mb-2"></h2>
-    <p id="overlay-desc" class="text-slate-400 text-sm mb-8 px-2 leading-relaxed"></p>
-    <button class="btn btn-primary w-full py-4 text-base tracking-wide" id="overlay-btn" onclick="dismissOverlay()">OK</button>
+    <h2 id="overlay-title" class="modal-result-title"></h2>
+    <p id="overlay-desc" class="modal-result-desc"></p>
+    <button class="btn btn-primary modal-result-btn" id="overlay-btn" onclick="dismissOverlay()">OK</button>
   </div>
 </div>
 
@@ -551,10 +541,18 @@ function addShipOverlays(containerSelector, ships, faded) {
       : `calc(${sz} * (${isSmall ? 'var(--cell-size) * 0.55' : 'var(--cell-size)'} + ${gapPx}px) - ${gapPx}px)`;
 
     if (ship.is_vertical) {
+      // Ship image is naturally horizontal (left → right).
+      // For vertical placement, rotate 90° CW so it points top → bottom.
+      // After rotate(90deg) with origin top-left: the image extends rightward,
+      // so we need no extra translate — the image top-left becomes the anchor.
+      const cellSz = isSmall ? 'calc(var(--cell-size) * 0.55)' : 'var(--cell-size)';
       img.style.width = sizeCalc;
-      img.style.height = '100%';
-      img.style.transformOrigin = '0 0';
-      img.style.transform = 'rotate(90deg) translateY(-100%)';
+      img.style.height = cellSz;
+      img.style.transformOrigin = 'top left';
+      img.style.transform = 'rotate(90deg)';
+      img.style.position = 'absolute';
+      img.style.top = '0';
+      img.style.left = '0';
     } else {
       img.style.width = sizeCalc;
       img.style.height = '100%';
@@ -1006,10 +1004,10 @@ function showOverlay(type, title, desc, btnText, callback) {
   const titleEl = document.getElementById('overlay-title');
 
   // Reset classes
-  if (overlay) overlay.className = 'overlay modal-overlay';
-  if (content) content.className = 'modal-content bg-[#111827] rounded-3xl p-8 w-full max-w-sm text-center border border-slate-800 relative overflow-hidden';
+  if (overlay) overlay.className = 'modal-overlay';
+  if (content) content.className = 'modal-content';
   if (emojiBg) emojiBg.className = 'result-icon-bg';
-  if (titleEl) titleEl.className = 'text-2xl font-bold mb-2';
+  if (titleEl) titleEl.className = 'modal-result-title';
 
   let emoji = '🎮';
   if (type === 'win' || type === '🏆') {
@@ -1033,11 +1031,11 @@ function showOverlay(type, title, desc, btnText, callback) {
   document.getElementById('overlay-desc').textContent = desc;
   document.getElementById('overlay-btn').textContent = btnText;
   overlayCallback = callback;
-  overlay.classList.remove('hidden');
+  overlay.classList.add('active');
 }
 
 function dismissOverlay() {
-  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('overlay').classList.remove('active');
   if (overlayCallback) { overlayCallback(); overlayCallback = null; }
 }
 
