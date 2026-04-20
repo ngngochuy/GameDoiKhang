@@ -1,0 +1,48 @@
+   222	<div class="container" id="app">
+   223	  <div class="header">
+   229	    <div style="display: flex; gap: 4px; align-items: center;">
+   231	      <div class="header-actions" id="battle-actions" style="display:none">
+   238	    </div>
+   239	  </div>
+   240	  <div class="status-bar" id="status">Đang kết nối<span class="waiting-dots"></span></div>
+   241	  <div class="grid-wrapper" id="grid-area"></div>
+   242	  <div class="timer-wrap" id="bs-timer" style="display:none; margin: 16px 0 8px;">
+   243	    <div class="timer-track"><div class="timer-fill" id="bs-timer-bar" style="width:100%"></div></div>
+   245	  </div>
+   246	  <div id="ship-list-area" class="ship-list" style="display:none"></div>
+   247	  <div class="controls" id="controls"></div>
+   249	  <div id="scoreboard" style="display:none">
+   250	    <div class="scoreboard">
+   251	      <div class="score-card" id="sc-p1"><div class="label">Bạn</div><div class="value" id="score-me">0</div><div class="sub"><span id="hits-me">0</span>/15 trúng</div></div>
+   252	      <div class="score-card" id="sc-p2"><div class="label">Đối thủ</div><div class="value" id="score-opp">0</div><div class="sub"><span id="hits-opp">0</span>/15 trúng</div></div>
+   253	    </div>
+   254	    <div class="opponent-ships" id="opponent-ships"></div>
+   255	  </div>
+   257	  <div id="my-grid-area" class="my-grid-preview ships-hidden"></div>
+   258	  <div class="my-grid-toggle" id="my-grid-toggle" onclick="toggleMyGrid()" style="display:none">
+   262	  </div>
+   263	</div>
+   266	<div class="screen-waiting" id="bs-waiting-screen">
+   267	  <div>
+   268	    <div style="width:56px;height:56px;margin:0 auto 32px;border-radius:50%;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center" class="pulse-ring">
+   269	      <div style="width:16px;height:16px;border-radius:50%;background:#3b82f6"></div>
+   270	    </div>
+   273	    <div style="margin-bottom:40px">
+   275	      <div class="room-code" id="bs-room-code">---</div>
+   276	    </div>
+   278	  </div>
+   279	</div>
+   282	<div class="modal-pause" id="bs-pause-modal">
+   283	  <div class="modal-pause-content">
+   284	    <div style="width:48px;height:48px;margin:0 auto 12px;border-radius:50%;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;border:1px solid var(--border)">
+   286	    </div>
+   290	  </div>
+   291	</div>
+   293	<div class="modal-overlay" id="overlay" style="display:none">
+   294	  <div id="overlay-content" class="modal-content">
+   295	    <div class="result-icon-wrapper">
+   296	      <div id="overlay-emoji-bg" class="result-icon-bg"></div>
+   297	      <div id="overlay-emoji" class="result-icon-inner"></div>
+   298	    </div>
+   302	  </div>
+   303	</div>
