@@ -180,7 +180,7 @@
     .btn-surrender:hover { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); }
 
     /* Waiting screen (same as GMS) */
-    .screen-waiting { position:fixed; inset:0; z-index:90; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; animation:fadeIn 0.25s ease; }
+    .screen-waiting { position:fixed; top:0; left:0; right:0; bottom:0; z-index:90; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; animation:fadeIn 0.25s ease; }
     .screen-waiting.active { display:flex; }
     .pulse-ring { position:relative; }
     .pulse-ring::before { content:''; position:absolute; inset:-8px; border-radius:50%; border:2px solid var(--accent); opacity:0; animation:pulseRing 2s ease-out infinite; }
@@ -191,7 +191,7 @@
     .btn-back:active { transform:scale(0.97); }
 
     /* Win/Loss Modal — synced with GMS design */
-    .modal-overlay { position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,0.6); backdrop-filter:blur(12px); animation:fadeIn 0.3s ease; }
+    .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; z-index:100; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,0.6); backdrop-filter:blur(12px); animation:fadeIn 0.3s ease; }
     .modal-overlay.active { display:flex; }
     .modal-overlay.win-modal { background: radial-gradient(circle at center, rgba(34,197,94,0.15) 0%, rgba(0,0,0,0.85) 100%); }
     .modal-overlay.lose-modal { background: radial-gradient(circle at center, rgba(239,68,68,0.15) 0%, rgba(0,0,0,0.85) 100%); }
@@ -1058,12 +1058,12 @@ function backToLobby() {
 
 function showRoomCode(code) {
   document.getElementById('bs-room-code').textContent = code;
-  document.getElementById('bs-waiting-screen').classList.add('active');
+  document.getElementById('bs-waiting-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
 
 function hideWaitingScreen() {
-  document.getElementById('bs-waiting-screen').classList.remove('active');
+  document.getElementById('bs-waiting-screen').style.display = 'none';
   document.getElementById('app').style.display = '';
 }
 
