@@ -268,7 +268,7 @@
     <div style="width:56px;height:56px;margin:0 auto 32px;border-radius:50%;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center" class="pulse-ring">
       <div style="width:16px;height:16px;border-radius:50%;background:#3b82f6"></div>
     </div>
-    <h2 style="font-size:18px;font-weight:600;margin-bottom:4px">Đang chờ đối thủ</h2>
+    <h2 style="font-size:18px;font-weight:600;margin-bottom:4px;color:#f1f5f9">Đang chờ đối thủ</h2>
     <p style="color:#94a3b8;font-size:14px;margin-bottom:32px">Gửi mã phòng cho bạn bè<span class="waiting-dots"></span></p>
     <div style="margin-bottom:40px">
       <p style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:3px;margin-bottom:12px">Mã phòng</p>
@@ -290,7 +290,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="overlay">
+<div class="modal-overlay" id="overlay" style="display:none">
   <div id="overlay-content" class="modal-content">
     <div class="result-icon-wrapper">
       <div id="overlay-emoji-bg" class="result-icon-bg"></div>
@@ -1031,11 +1031,11 @@ function showOverlay(type, title, desc, btnText, callback) {
   document.getElementById('overlay-desc').textContent = desc;
   document.getElementById('overlay-btn').textContent = btnText;
   overlayCallback = callback;
-  overlay.classList.add('active');
+  overlay.style.display = 'flex';
 }
 
 function dismissOverlay() {
-  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('overlay').style.display = 'none';
   if (overlayCallback) { overlayCallback(); overlayCallback = null; }
 }
 
