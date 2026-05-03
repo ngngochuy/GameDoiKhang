@@ -110,6 +110,28 @@ switch ($action) {
     case 'bs_resume':
         bsBsResume();
         break;
+    // ─── Higher/Lower (Đoán Trúng Số) ───
+    case 'hl_create_room':
+        hlCreateRoom();
+        break;
+    case 'hl_join_room':
+        hlJoinRoom();
+        break;
+    case 'hl_set_secret':
+        hlSetSecret();
+        break;
+    case 'hl_submit_guess':
+        hlSubmitGuess();
+        break;
+    case 'hl_get_room':
+        hlGetRoom();
+        break;
+    case 'hl_get_guesses':
+        hlGetGuesses();
+        break;
+    case 'hl_surrender':
+        hlSurrender();
+        break;
     default:
         // Không trả error — tránh spam toast khi bị gọi không có action
         echo json_encode(['ok' => true, 'info' => 'API ready']);
@@ -144,8 +166,9 @@ function createRoom()
     if (!$roomId)
         return error('Không thể tạo phòng, thử lại sau');
 
-    $stmt = $pdo->prepare("INSERT INTO rooms (id, player1_id, status, player1_pauses, player2_pauses) VALUES (?, ?, 'waiting', 5, 5)");
-    $stmt->execute([$roomId, $playerId]);
+    $secretLength = (int) getParam('secret_length', 4);
+    $stmt = $pdo->prepare("INSERT INTO rooms (id, player1_id, status, player1_pauses, player2_pauses, secret_length) VALUES (?, ?, 'waiting', 5, 5, ?)");
+    $stmt->execute([$roomId, $playerId, $secretLength]);
 
     echo json_encode(['ok' => true, 'room_id' => $roomId]);
 }
@@ -188,14 +211,16 @@ function setSecret()
 
     if (!$roomId || !$playerId || !$secret)
         return error('Missing params');
-    if (!preg_match('/^\d{4}$/', $secret))
-        return error('Secret phải là 4 chữ số');
 
     $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
     $stmt->execute([$roomId]);
     $room = $stmt->fetch();
     if (!$room)
         return error('Phòng không tồn tại');
+
+    $len = isset($room['secret_length']) ? (int)$room['secret_length'] : 4;
+    if (!preg_match('/^\d{' . $len . '}$/', $secret))
+        return error("Secret phải là $len chữ số");
 
     // Xác định player nào
     $playerKey = null;
@@ -235,14 +260,17 @@ function submitGuess()
 
     if (!$roomId || !$playerId || !$digits)
         return error('Missing params');
-    if (!preg_match('/^\d{4}$/', $digits))
-        return error('Digits phải là 4 chữ số');
 
     $stmt = $pdo->prepare("SELECT * FROM rooms WHERE id = ?");
     $stmt->execute([$roomId]);
     $room = $stmt->fetch();
     if (!$room)
         return error('Phòng không tồn tại');
+
+    $len = isset($room['secret_length']) ? (int)$room['secret_length'] : 4;
+    if (!preg_match('/^\d{' . $len . '}$/', $digits))
+        return error("Digits phải là $len chữ số");
+
     if ($room['status'] !== 'playing')
         return error('Game chưa bắt đầu');
 
@@ -269,7 +297,7 @@ function submitGuess()
     $stmt->execute([$roomId, $myRole, $digits, $correct]);
 
     // Kiểm tra thắng
-    if ($correct == 4) {
+    if ($correct == $len) {
         $stmt = $pdo->prepare("UPDATE rooms SET status = 'finished', winner = ?, turn_start_time = NULL WHERE id = ?");
         $stmt->execute([$myRole, $roomId]);
         echo json_encode(['ok' => true, 'correct' => $correct, 'won' => true]);
@@ -343,6 +371,7 @@ function getRoom()
             'player2_pauses' => (int)$room['player2_pauses'],
             'resume_request_p1' => $room['resume_request_p1'] ? (int)$room['resume_request_p1'] : null,
             'resume_request_p2' => $room['resume_request_p2'] ? (int)$room['resume_request_p2'] : null,
+            'secret_length' => (int)$room['secret_length'],
         ]
     ]);
 }
@@ -525,8 +554,8 @@ function surrender()
 function checkGuess($guess, $secret)
 {
     $correct = 0;
-
-    for ($i = 0; $i < 4; $i++) {
+    $len = strlen($secret);
+    for ($i = 0; $i < $len; $i++) {
         if ($guess[$i] === $secret[$i]) {
             $correct++;
         }
@@ -613,8 +642,9 @@ function bsCreateRoom()
     }
     if (!$roomId) return error('Không thể tạo phòng');
 
-    $stmt = $pdo->prepare("INSERT INTO bs_rooms (id, player1_id, status) VALUES (?, ?, 'waiting')");
-    $stmt->execute([$roomId, $playerId]);
+    $mapSize = (int) getParam('map_size', 10);
+    $stmt = $pdo->prepare("INSERT INTO bs_rooms (id, player1_id, status, map_size) VALUES (?, ?, 'waiting', ?)");
+    $stmt->execute([$roomId, $playerId, $mapSize]);
 
     echo json_encode(['ok' => true, 'room_id' => $roomId]);
 }
@@ -778,6 +808,7 @@ function bsGetRoom()
             'opponent_ships' => $opponentShips,
             'turn_start_time' => $room['turn_start_time'] ? (int)$room['turn_start_time'] : null,
             'is_paused' => isset($room['is_paused']) ? (bool)$room['is_paused'] : false,
+            'map_size' => isset($room['map_size']) ? (int)$room['map_size'] : 10,
         ]
     ]);
 }
@@ -1024,6 +1055,209 @@ function bsBsResume()
     }
 
     echo json_encode(['ok' => true]);
+}
+
+// ============================================
+// ===== HIGHER/LOWER (Đoán Trúng Số) =====
+// ============================================
+
+function hlCreateRoom() {
+    global $pdo;
+    $playerId = getParam('player_id');
+    if (!$playerId) return error('Missing player_id');
+
+    $pdo->exec("DELETE FROM hl_rooms WHERE created_at < NOW() - INTERVAL 1 HOUR");
+
+    $roomId = null;
+    for ($i = 0; $i < 20; $i++) {
+        $id = rand(100, 999);
+        $stmt = $pdo->prepare("SELECT id FROM hl_rooms WHERE id = ?");
+        $stmt->execute([$id]);
+        if (!$stmt->fetch()) { $roomId = $id; break; }
+    }
+    if (!$roomId) return error('Không thể tạo phòng');
+
+    $difficulty = (int) getParam('difficulty', 2);
+    $stmt = $pdo->prepare("INSERT INTO hl_rooms (id, player1_id, status, difficulty) VALUES (?, ?, 'waiting', ?)");
+    $stmt->execute([$roomId, $playerId, $difficulty]);
+
+    echo json_encode(['ok' => true, 'room_id' => $roomId]);
+}
+
+function hlJoinRoom() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Không tìm thấy phòng');
+    if ($room['status'] !== 'waiting') return error('Phòng đã đầy hoặc đang chơi');
+
+    $stmt = $pdo->prepare("UPDATE hl_rooms SET player2_id = ?, status = 'setSecret' WHERE id = ?");
+    $stmt->execute([$playerId, $roomId]);
+
+    echo json_encode(['ok' => true, 'room_id' => (int)$roomId]);
+}
+
+function hlSetSecret() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    $secret = getParam('secret'); // This is an integer
+    
+    if (!$roomId || !$playerId || $secret === null) return error('Missing params');
+    $secret = (int) $secret;
+
+    $stmt = $pdo->prepare("SELECT * FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Phòng không tồn tại');
+
+    $myRole = null;
+    if ($room['player1_id'] === $playerId) $myRole = 'player1_secret';
+    elseif ($room['player2_id'] === $playerId) $myRole = 'player2_secret';
+    else return error('Bạn không ở trong phòng này');
+
+    // Check valid range based on difficulty
+    $diff = (int)$room['difficulty'];
+    if ($diff == 2 && ($secret < 10 || $secret > 99)) return error('Số phải từ 10 - 99');
+    if ($diff == 3 && ($secret < 100 || $secret > 999)) return error('Số phải từ 100 - 999');
+    if ($diff == 4 && ($secret < 1000 || $secret > 9999)) return error('Số phải từ 1000 - 9999');
+
+    $stmt = $pdo->prepare("UPDATE hl_rooms SET $myRole = ? WHERE id = ?");
+    $stmt->execute([$secret, $roomId]);
+
+    // Check if both have set secret
+    $stmt = $pdo->prepare("SELECT player1_secret, player2_secret FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $updated = $stmt->fetch();
+
+    if ($updated['player1_secret'] !== null && $updated['player2_secret'] !== null) {
+        $now = round(microtime(true) * 1000);
+        $pdo->prepare("UPDATE hl_rooms SET status = 'playing', current_turn = 'player1', turn_start_time = ? WHERE id = ?")->execute([$now, $roomId]);
+    }
+
+    echo json_encode(['ok' => true]);
+}
+
+function hlSubmitGuess() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    $guess = getParam('guess');
+
+    if (!$roomId || !$playerId || $guess === null) return error('Missing params');
+    $guess = (int) $guess;
+
+    $stmt = $pdo->prepare("SELECT * FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Phòng không tồn tại');
+    if ($room['status'] !== 'playing') return error('Trò chơi chưa bắt đầu');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng');
+    if ($room['current_turn'] !== $myRole) return error('Chưa đến lượt bạn');
+
+    $opponentSecret = ($myRole === 'player1') ? (int)$room['player2_secret'] : (int)$room['player1_secret'];
+
+    $result = 'correct';
+    if ($guess < $opponentSecret) $result = 'higher';
+    elseif ($guess > $opponentSecret) $result = 'lower';
+
+    $stmt = $pdo->prepare("INSERT INTO hl_guesses (room_id, player, guess, result) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$roomId, $myRole, $guess, $result]);
+
+    if ($result === 'correct') {
+        $pdo->prepare("UPDATE hl_rooms SET status = 'finished', winner = ?, turn_start_time = NULL WHERE id = ?")->execute([$myRole, $roomId]);
+        echo json_encode(['ok' => true, 'result' => $result, 'won' => true]);
+        return;
+    }
+
+    $nextTurn = ($myRole === 'player1') ? 'player2' : 'player1';
+    $now = round(microtime(true) * 1000);
+    $pdo->prepare("UPDATE hl_rooms SET current_turn = ?, turn_start_time = ? WHERE id = ?")->execute([$nextTurn, $now, $roomId]);
+
+    echo json_encode(['ok' => true, 'result' => $result, 'won' => false]);
+}
+
+function hlGetRoom() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId) return error('Missing room_id');
+
+    $stmt = $pdo->prepare("SELECT * FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room) return error('Phòng không tồn tại');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    
+    // Auto-skip turn if timeout (> 61 seconds)
+    $now = round(microtime(true) * 1000);
+    if ($room['status'] === 'playing' && $room['turn_start_time']) {
+        if (($now - $room['turn_start_time']) > 61000) {
+            $newTurn = ($room['current_turn'] === 'player1') ? 'player2' : 'player1';
+            $pdo->exec("UPDATE hl_rooms SET current_turn = '$newTurn', turn_start_time = $now WHERE id = " . (int)$roomId);
+            $room['current_turn'] = $newTurn;
+            $room['turn_start_time'] = $now;
+        }
+    }
+
+    echo json_encode([
+        'ok' => true,
+        'room' => [
+            'id' => (int)$room['id'],
+            'player1_id' => $room['player1_id'],
+            'player2_id' => $room['player2_id'],
+            'player1_secret' => $room['player1_secret'] !== null,
+            'player2_secret' => $room['player2_secret'] !== null,
+            'current_turn' => $room['current_turn'],
+            'turn_start_time' => $room['turn_start_time'] ? (int)$room['turn_start_time'] : null,
+            'status' => $room['status'],
+            'winner' => $room['winner'],
+            'difficulty' => (int)$room['difficulty'],
+            'my_role' => $myRole,
+            'my_secret' => ($myRole === 'player1') ? $room['player1_secret'] : (($myRole === 'player2') ? $room['player2_secret'] : null)
+        ]
+    ]);
+}
+
+function hlGetGuesses() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $afterId = getParam('after_id', 0);
+    if (!$roomId) return error('Missing room_id');
+
+    $stmt = $pdo->prepare("SELECT id, player, guess, result FROM hl_guesses WHERE room_id = ? AND id > ? ORDER BY id ASC");
+    $stmt->execute([$roomId, $afterId]);
+    $guesses = $stmt->fetchAll();
+
+    echo json_encode(['ok' => true, 'guesses' => $guesses]);
+}
+
+function hlSurrender() {
+    global $pdo;
+    $roomId = getParam('room_id');
+    $playerId = getParam('player_id');
+    if (!$roomId || !$playerId) return error('Missing params');
+
+    $stmt = $pdo->prepare("SELECT * FROM hl_rooms WHERE id = ?");
+    $stmt->execute([$roomId]);
+    $room = $stmt->fetch();
+    if (!$room || $room['status'] !== 'playing') return error('Không thể đầu hàng lúc này');
+
+    $myRole = ($room['player1_id'] === $playerId) ? 'player1' : (($room['player2_id'] === $playerId) ? 'player2' : null);
+    if (!$myRole) return error('Bạn không ở trong phòng');
+
+    $winner = ($myRole === 'player1') ? 'player2' : 'player1';
+    $pdo->prepare("UPDATE hl_rooms SET status = 'finished', winner = ?, turn_start_time = NULL WHERE id = ?")->execute([$winner, $roomId]);
+
+    echo json_encode(['ok' => true, 'winner' => $winner]);
 }
 
 // ============================================

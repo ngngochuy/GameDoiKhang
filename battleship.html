@@ -310,11 +310,11 @@
 // ============================================
 
 const API_URL = 'api.php';
-const GRID_SIZE = 10;
+let GRID_SIZE = 10;
 const TOTAL_SHIP_CELLS = 15;
-const COLS = 'ABCDEFGHIJ';
-const ROWS_LABEL = COLS;
-const COLS_LABEL = [1,2,3,4,5,6,7,8,9,10];
+const COLS = 'ABCDEFGHIJKLMNO';
+let ROWS_LABEL = COLS.slice(0, 10).split('');
+let COLS_LABEL = [1,2,3,4,5,6,7,8,9,10];
 const POLL_MS = 1200;
 
 const SHIPS = [
@@ -368,9 +368,20 @@ async function api(action, params = {}) {
 // ============================================
 // INIT
 // ============================================
+function updateGridSize(size) {
+  GRID_SIZE = size;
+  ROWS_LABEL = COLS.slice(0, GRID_SIZE).split('');
+  COLS_LABEL = Array.from({length: GRID_SIZE}, (_, i) => i + 1);
+  
+  // Adjust cell size to fit screen width (accounting for header column/margins)
+  const cellVw = (90 / (GRID_SIZE + 1)).toFixed(1);
+  const maxPx = Math.floor(360 / GRID_SIZE);
+  document.documentElement.style.setProperty('--cell-size', `min(${cellVw}vw, ${maxPx}px)`);
+}
+
 function initGrids() {
-  myGrid = Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => ({ ship: null, hit: false })));
-  attackGrid = Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => ({ hit: false, isHit: false, shipId: null })));
+  myGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => ({ ship: null, hit: false })));
+  attackGrid = Array.from({ length: GRID_SIZE }, () => Array.from({ length: GRID_SIZE }, () => ({ hit: false, isHit: false, shipId: null })));
 }
 
 // ============================================
@@ -385,6 +396,9 @@ function initGrids() {
     const data = await api('bs_get_room', { room_id: roomId });
     if (data.error) { setStatus('Phòng không tồn tại', 'hit'); return; }
     const room = data.room;
+    if (room.map_size) {
+      updateGridSize(parseInt(room.map_size));
+    }
     myRole = room.my_role;
 
     if (room.status === 'waiting') {
@@ -420,6 +434,10 @@ function startPolling(mode) {
       const data = await api('bs_get_room', { room_id: roomId });
       if (data.error) { stopPolling(); return; }
       const room = data.room;
+      if (room.map_size && parseInt(room.map_size) !== GRID_SIZE) {
+        updateGridSize(parseInt(room.map_size));
+        if (myGrid.length !== GRID_SIZE) initGrids();
+      }
       myRole = room.my_role;
 
       if (mode === 'waitForPlayer') {

@@ -42,7 +42,7 @@ function setRoomUrl(id) {
 
 
 const TURN_DURATION = 60;
-const DIGITS = 4;
+let DIGITS = 4;
 const POLL_MS = 1000;
 
 // ============================================
@@ -108,8 +108,26 @@ function setupOtpInputs(inputIds) {
 }
 
 setupOtpInputs(['join-d1', 'join-d2', 'join-d3']);
-setupOtpInputs(['secret-d1', 'secret-d2', 'secret-d3', 'secret-d4']);
-setupOtpInputs(['guess-d1', 'guess-d2', 'guess-d3', 'guess-d4']);
+
+function generateInputs() {
+  const secContainer = document.getElementById('secret-inputs-container');
+  if (secContainer) {
+    secContainer.innerHTML = '';
+    for(let i=1; i<=DIGITS; i++) {
+      secContainer.innerHTML += `<input id="secret-d${i}" class="secret-input ${DIGITS > 5 ? 'w-10 h-10 text-xl' : 'w-14 h-14'}" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />`;
+    }
+    setupOtpInputs(Array.from({length: DIGITS}, (_, i) => `secret-d${i+1}`));
+  }
+
+  const guessContainer = document.getElementById('guess-inputs-container');
+  if (guessContainer) {
+    guessContainer.innerHTML = '';
+    for(let i=1; i<=DIGITS; i++) {
+      guessContainer.innerHTML += `<input id="guess-d${i}" class="otp-input ${DIGITS > 5 ? 'w-10 h-10 text-xl' : ''}" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" />`;
+    }
+    setupOtpInputs(Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`));
+  }
+}
 
 // BS join inputs (only if elements exist)
 if (document.getElementById('bs-join-d1')) {
@@ -123,8 +141,12 @@ async function bsCreateRoom() {
   const btn = document.getElementById('btn-bs-create');
   btn.disabled = true;
   btn.textContent = '⏳ Đang tạo...';
+
+  const mapSizeEl = document.getElementById('bs-map-size');
+  const map_size = mapSizeEl ? parseInt(mapSizeEl.value) : 10;
+
   try {
-    const data = await api('bs_create_room');
+    const data = await api('bs_create_room', { map_size });
     if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Tạo phòng mới'; return; }
     window.location.href = 'battleship.html?room=' + data.room_id;
   } catch (err) {
@@ -145,6 +167,47 @@ async function bsJoinRoom() {
     const data = await api('bs_join_room', { room_id: code });
     if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Vào phòng'; return; }
     window.location.href = 'battleship.html?room=' + data.room_id;
+  } catch (err) {
+    console.error(err);
+    showToast('Không thể kết nối server', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Vào phòng';
+  }
+}
+
+// ============================================
+// HIGHER/LOWER ROOM — CREATE & JOIN (redirects to higher_lower.html)
+// ============================================
+async function hlCreateRoom() {
+  const btn = document.getElementById('btn-hl-create');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tạo...';
+
+  const diffEl = document.getElementById('hl-difficulty');
+  const difficulty = diffEl ? parseInt(diffEl.value) : 2;
+
+  try {
+    const data = await api('hl_create_room', { difficulty });
+    if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Tạo phòng mới'; return; }
+    window.location.href = 'higher_lower.html?room=' + data.room_id;
+  } catch (err) {
+    console.error(err);
+    showToast('Không thể kết nối server', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Tạo phòng mới';
+  }
+}
+
+async function hlJoinRoom() {
+  const code = ['hl-join-d1','hl-join-d2','hl-join-d3'].map(id => document.getElementById(id).value).join('');
+  if (code.length !== 3 || !/^\d{3}$/.test(code)) { showToast('Vui lòng nhập đủ 3 chữ số', 'warning'); return; }
+  const btn = document.getElementById('btn-hl-join');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang kết nối...';
+  try {
+    const data = await api('hl_join_room', { room_id: code });
+    if (data.error) { showToast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Vào phòng'; return; }
+    window.location.href = 'higher_lower.html?room=' + data.room_id;
   } catch (err) {
     console.error(err);
     showToast('Không thể kết nối server', 'error');
@@ -186,12 +249,12 @@ function startLiveTest() {
   showScreen('game');
   isMyTurn = true;
   document.getElementById('btn-guess').disabled = false;
-  ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
+  Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`).forEach(id => {
     document.getElementById(id).disabled = false;
   });
 
   startLocalTimer();
-  focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
+  focusFirstEmpty(Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`));
   console.log('🧪 LIVE TEST — Secret:', liveTestSecret);
 }
 
@@ -203,8 +266,11 @@ async function createRoom() {
   btn.disabled = true;
   btn.textContent = '⏳ Đang tạo...';
 
+  const diffEl = document.getElementById('gms-difficulty');
+  const secret_length = diffEl ? parseInt(diffEl.value) : 4;
+
   try {
-    const data = await api('create_room');
+    const data = await api('create_room', { secret_length });
     if (data.error) {
       showToast(data.error, 'error');
       btn.disabled = false;
@@ -220,6 +286,8 @@ async function createRoom() {
 
     document.getElementById('waiting-room-code').textContent = roomId;
     console.log('Room created:', roomId);
+    DIGITS = secret_length;
+    generateInputs();
     showScreen('waiting');
     startPolling('waitForPlayer');
   } catch (err) {
@@ -260,8 +328,15 @@ async function joinRoom() {
     isLiveTest = false;
     showToast('Đã vào phòng ' + roomId + '!', 'success');
 
+    // Polling will get room data and set DIGITS properly. But we need it for setup now
+    const roomData = await api('get_room', { room_id: roomId });
+    if(roomData.ok && roomData.room && roomData.room.secret_length) {
+      DIGITS = parseInt(roomData.room.secret_length);
+    }
+    generateInputs();
+
     showScreen('secret');
-    focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
+    focusFirstEmpty(Array.from({length: DIGITS}, (_, i) => `secret-d${i+1}`));
   } catch (err) {
     console.error('joinRoom error:', err);
     showToast('Không thể kết nối server.', 'error');
@@ -285,13 +360,13 @@ function cancelRoom() {
 // SET SECRET
 // ============================================
 async function setSecret() {
-  const digits = ['secret-d1','secret-d2','secret-d3','secret-d4'].map(id => document.getElementById(id).value);
-  if (digits.some(d => d === '' || !/^\d$/.test(d))) {
-    showToast('Vui lòng nhập đủ 4 chữ số');
+  const digitsArr = Array.from({length: DIGITS}, (_, i) => document.getElementById(`secret-d${i+1}`).value);
+  if (digitsArr.some(d => d === '' || !/^\d$/.test(d))) {
+    showToast(`Vui lòng nhập đủ ${DIGITS} chữ số`);
     return;
   }
 
-  const secret = digits.join('');
+  const secret = digitsArr.join('');
   mySecret = secret;
 
   const btn = document.getElementById('btn-set-secret');
@@ -320,19 +395,14 @@ async function setSecret() {
 async function submitGuess() {
   if (!isMyTurn && !isLiveTest) return;
 
-  const digits = [
-    document.getElementById('guess-d1').value,
-    document.getElementById('guess-d2').value,
-    document.getElementById('guess-d3').value,
-    document.getElementById('guess-d4').value,
-  ];
+  const digitsArr = Array.from({length: DIGITS}, (_, i) => document.getElementById(`guess-d${i+1}`).value);
 
-  if (digits.some(d => d === '' || !/^\d$/.test(d))) {
+  if (digitsArr.some(d => d === '' || !/^\d$/.test(d))) {
     shakeInputs();
     return;
   }
 
-  const guess = digits.join('');
+  const guess = digitsArr.join('');
   const btn = document.getElementById('btn-guess');
   btn.disabled = true;
 
@@ -401,9 +471,11 @@ function startPolling(mode) {
       switch (mode) {
         case 'waitForPlayer':
           if (room.player2_id) {
+            if (room.secret_length) DIGITS = parseInt(room.secret_length);
+            generateInputs();
             stopPolling();
             showScreen('secret');
-            focusFirstEmpty(['secret-d1','secret-d2','secret-d3','secret-d4']);
+            focusFirstEmpty(Array.from({length: DIGITS}, (_, i) => `secret-d${i+1}`));
           }
           break;
 
@@ -487,7 +559,7 @@ function enterGameScreen(room) {
 
   isMyTurn = (room.current_turn === myRole);
   updateTurnUI(room);
-  focusFirstEmpty(['guess-d1','guess-d2','guess-d3','guess-d4']);
+  focusFirstEmpty(Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`));
 }
 
 // ============================================
@@ -520,7 +592,7 @@ function updateTurnUI(room) {
   if (room.status !== 'playing') return;
 
   const btnGuess = document.getElementById('btn-guess');
-  const inputs = ['guess-d1','guess-d2','guess-d3','guess-d4'];
+  const inputs = Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`);
   const timerContainer = document.getElementById('timer-container');
 
   if (isMyTurn) {
@@ -609,7 +681,7 @@ function startLocalTimer() {
 // AUTO-SUBMIT
 // ============================================
 function autoSubmitRandomGuess() {
-  ['guess-d1','guess-d2','guess-d3','guess-d4'].forEach(id => {
+  Array.from({length: DIGITS}, (_, i) => `guess-d${i+1}`).forEach(id => {
     document.getElementById(id).value = Math.floor(Math.random() * 10);
   });
   submitGuess();
@@ -755,10 +827,14 @@ function backToLobby() {
       myRole = (data.room.player1_id === myPlayerId) ? 'player1' : 'player2';
       
       if (data.room.status === 'waiting') {
+        if (data.room.secret_length) DIGITS = parseInt(data.room.secret_length);
+        generateInputs();
         showScreen('waiting');
         document.getElementById('waiting-room-code').textContent = roomId;
         startPolling('waitForPlayer');
       } else if (data.room.status === 'setSecret') {
+        if (data.room.secret_length) DIGITS = parseInt(data.room.secret_length);
+        generateInputs();
         if (data.room.my_secret) {
           mySecret = data.room.my_secret;
           showScreen('secret');
@@ -774,6 +850,8 @@ function backToLobby() {
           startPolling('checkSecret');
         }
       } else if (data.room.status === 'playing') {
+        if (data.room.secret_length) DIGITS = parseInt(data.room.secret_length);
+        generateInputs();
         enterGameScreen(data.room);
         startPolling('poll');
       } else {

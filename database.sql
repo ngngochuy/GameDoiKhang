@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `rooms` (
   `turn_pause_time` BIGINT DEFAULT NULL,
   `resume_request_p1` BIGINT DEFAULT NULL,
   `resume_request_p2` BIGINT DEFAULT NULL,
+  `secret_length` TINYINT DEFAULT 4,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
@@ -53,6 +54,7 @@ CREATE TABLE IF NOT EXISTS `bs_rooms` (
   `winner` ENUM('player1','player2') DEFAULT NULL,
   `player1_hits` INT DEFAULT 0,
   `player2_hits` INT DEFAULT 0,
+  `map_size` TINYINT DEFAULT 10,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
@@ -87,4 +89,37 @@ CREATE TABLE IF NOT EXISTS `bs_shots` (
   PRIMARY KEY (`id`),
   KEY `idx_bs_room_shot` (`room_id`),
   CONSTRAINT `fk_bs_room_shot` FOREIGN KEY (`room_id`) REFERENCES `bs_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================
+-- Higher/Lower (Đoán Trúng Số) Tables
+-- ============================================
+
+-- Bảng phòng Higher/Lower
+CREATE TABLE IF NOT EXISTS `hl_rooms` (
+  `id` INT(3) UNSIGNED NOT NULL,
+  `player1_id` VARCHAR(32) NOT NULL,
+  `player2_id` VARCHAR(32) DEFAULT NULL,
+  `player1_secret` INT DEFAULT NULL,
+  `player2_secret` INT DEFAULT NULL,
+  `current_turn` ENUM('player1','player2') DEFAULT 'player1',
+  `turn_start_time` BIGINT DEFAULT NULL,
+  `status` ENUM('waiting','setSecret','playing','finished') DEFAULT 'waiting',
+  `winner` ENUM('player1','player2') DEFAULT NULL,
+  `difficulty` TINYINT DEFAULT 2, -- 2: 10-99, 3: 100-999, 4: 1000-9999
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+-- Bảng lịch sử đoán Higher/Lower
+CREATE TABLE IF NOT EXISTS `hl_guesses` (
+  `id` INT UNSIGNED AUTO_INCREMENT,
+  `room_id` INT(3) UNSIGNED NOT NULL,
+  `player` ENUM('player1','player2') NOT NULL,
+  `guess` INT NOT NULL,
+  `result` ENUM('lower','higher','correct') NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_hl_room` (`room_id`),
+  CONSTRAINT `fk_hl_room` FOREIGN KEY (`room_id`) REFERENCES `hl_rooms`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;

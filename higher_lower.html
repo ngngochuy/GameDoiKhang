@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Game Đoán Trúng Số - Đối kháng Real-time 2 người chơi" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <link rel="icon" type="image/png" href="img/nghuy.png" />
+  <title>Đoán Trúng Số — Đối Kháng</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: '#a855f7' } } }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css?v=8" />
+</head>
+
+<body>
+
+  <div class="absolute top-4 right-4 z-50">
+    <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shadow-sm text-sm">
+    </button>
+  </div>
+
+  <!-- ======== SCREEN: WAITING ======== -->
+  <div id="screen-waiting" class="screen active flex-col items-center justify-center h-screen px-6">
+    <div class="text-center">
+      <div class="w-14 h-14 mx-auto mb-8 rounded-full bg-purple-500/10 flex items-center justify-center pulse-ring">
+        <div class="w-4 h-4 rounded-full bg-purple-500"></div>
+      </div>
+      <h2 class="text-lg font-semibold mb-1">Đang chờ đối thủ</h2>
+      <p class="text-[var(--text-secondary)] text-sm mb-8">Gửi mã phòng cho bạn bè<span class="waiting-dots"></span></p>
+
+      <div class="mb-10">
+        <p class="text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-3">Mã phòng</p>
+        <div id="waiting-room-code" class="room-code text-purple-400 border-purple-500/30">---</div>
+      </div>
+
+      <button class="btn-outline px-8 py-2.5 text-sm hover:!border-purple-500 hover:!text-purple-500 hover:!bg-purple-500/10" onclick="cancelRoom()">Trở về sảnh</button>
+    </div>
+  </div>
+
+  <!-- ======== SCREEN: SET SECRET ======== -->
+  <div id="screen-secret" class="screen flex-col items-center justify-center h-screen px-6">
+    <div class="text-center w-full max-w-xs">
+      <div
+        class="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+          stroke-linecap="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <h2 class="text-lg font-semibold mb-1">Đặt số bí mật</h2>
+      <p class="text-[var(--text-secondary)] text-sm mb-8" id="secret-hint">Chọn số để đối thủ đoán</p>
+
+      <div class="mb-5">
+        <input id="secret-input-number" class="w-full text-center text-3xl font-bold bg-[var(--bg-input)] border border-[var(--border)] rounded-xl py-4 focus:outline-none focus:border-purple-500 text-[var(--text-primary)]" type="number" placeholder="Nhập số..." />
+      </div>
+      <button id="btn-set-secret" class="btn-primary w-full py-3.5 !bg-purple-600 hover:!bg-purple-700 !shadow-purple-500/20" onclick="hlSetSecret()">Xác nhận</button>
+      <p id="secret-error" class="text-red-400 text-xs text-center mt-3 hidden"></p>
+      <p id="secret-waiting" class="text-[var(--text-secondary)] text-sm text-center mt-4 hidden">
+        Đang chờ đối thủ đặt số<span class="waiting-dots"></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ======== SCREEN: GAME BOARD ======== -->
+  <div id="screen-game" class="screen flex-col h-screen">
+
+    <!-- HEADER -->
+    <div class="shrink-0 px-4 pb-3 bg-[var(--bg-card)] border-b border-[var(--border)]"
+      style="padding-top: max(65px, calc(1.5rem + env(safe-area-inset-top, 24px)));">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h2 class="text-base font-bold leading-tight">Đoán Trúng Số</h2>
+          <p class="text-[11px] text-[var(--text-secondary)]" id="game-hint">Gợi ý Cao/Thấp • 60s/lượt</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-hl-surrender" onclick="hlSurrender()"
+            class="w-7 h-7 flex items-center justify-center bg-red-500/10 border border-red-500/20 rounded-md hover:bg-red-500/20 transition" title="Đầu hàng">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="timer-container" class="flex items-center gap-2 transition-opacity duration-300">
+        <div class="timer-bar-track flex-1">
+          <div id="timer-bar" class="timer-bar-fill" style="width:100%; background: #a855f7;"></div>
+        </div>
+        <span id="timer-text" class="text-[11px] font-semibold tabular-nums text-[var(--text-secondary)] w-7 text-right">60s</span>
+      </div>
+    </div>
+
+    <!-- MY SECRET -->
+    <div id="my-secret-container" class="shrink-0 px-4 pt-4 pb-1 hidden">
+      <div
+        class="bg-gradient-to-r from-purple-500/10 via-fuchsia-500/10 to-purple-500/10 border border-purple-500/20 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-md shadow-lg shadow-purple-500/5">
+        <div
+          class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-50">
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+          <p class="text-[10px] text-purple-300/80 uppercase tracking-widest font-semibold">Số của bạn</p>
+          <button id="btn-toggle-secret" onclick="toggleSecretVisibility()"
+            class="w-6 h-6 flex items-center justify-center rounded-md bg-purple-500/20 hover:bg-purple-500/30 transition-colors">
+            <svg id="icon-eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+            <svg id="icon-eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
+        <div class="text-xl font-bold text-purple-300 tracking-wider" id="my-secret-display">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="history-area" class="flex-1 overflow-y-auto history-scroll px-4 py-3 space-y-2">
+      <div id="history-empty" class="flex flex-col items-center justify-center h-full">
+        <div class="w-10 h-10 mb-3 rounded-xl bg-[var(--border)] flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </div>
+        <p class="text-sm text-[var(--text-muted)]">Đoán số của đối thủ</p>
+      </div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="shrink-0 px-4 pt-3 pb-4 bg-[var(--bg-card)] border-t border-[var(--border)] safe-bottom">
+      <div class="mb-3">
+        <input id="guess-input-number" class="w-full text-center text-3xl font-bold bg-[var(--bg-input)] border border-[var(--border)] rounded-xl py-3 focus:outline-none focus:border-purple-500 text-[var(--text-primary)]" type="number" placeholder="Đoán..." />
+      </div>
+      <button id="btn-guess" class="btn-primary w-full py-3.5 tracking-wide !bg-purple-600 hover:!bg-purple-700 !shadow-purple-500/20" onclick="hlSubmitGuess()">
+        Đoán số
+      </button>
+    </div>
+  </div>
+
+  <!-- ======== MODAL ======== -->
+  <div id="modal-result" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center px-6 hidden">
+    <div id="modal-content" class="modal-content bg-[var(--bg-card)] rounded-3xl p-8 w-full max-w-sm text-center border border-[var(--border)] relative overflow-hidden">
+      <div class="result-icon-wrapper">
+        <div id="result-emoji-bg" class="result-icon-bg"></div>
+        <div id="result-emoji" class="result-icon-inner text-5xl"></div>
+      </div>
+      <h2 id="result-title" class="text-2xl font-bold mb-2"></h2>
+      <p id="result-desc" class="text-[var(--text-secondary)] text-sm mb-4 px-2 leading-relaxed"></p>
+      <button class="btn-primary w-full py-4 text-base tracking-wide" onclick="backToLobby()">Về sảnh chính</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast-container" class="fixed top-4 left-4 right-4 z-[100] flex flex-col items-center gap-2 pointer-events-none"></div>
+
+  <script src="theme.js"></script>
+  <script src="higher_lower.js?v=1"></script>
+</body>
+
+</html>
