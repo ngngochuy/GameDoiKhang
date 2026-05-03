@@ -25,7 +25,7 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
 
-    // ─── Auto Migration for Pause Feature ───
+    // ─── Auto Migration ───
     try {
         $pdo->exec("ALTER TABLE rooms ADD COLUMN is_paused TINYINT(1) DEFAULT 0");
         $pdo->exec("ALTER TABLE rooms ADD COLUMN player1_pauses INT DEFAULT 5");
@@ -34,6 +34,45 @@ try {
         $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p1 BIGINT DEFAULT NULL");
         $pdo->exec("ALTER TABLE rooms ADD COLUMN resume_request_p2 BIGINT DEFAULT NULL");
     } catch (PDOException $e) { /* ignore duplicate col err */ }
+
+    try {
+        $pdo->exec("ALTER TABLE rooms ADD COLUMN secret_length INT DEFAULT 4");
+    } catch (PDOException $e) { /* ignore duplicate col err */ }
+
+    try {
+        $pdo->exec("ALTER TABLE bs_rooms ADD COLUMN map_size INT DEFAULT 10");
+    } catch (PDOException $e) { /* ignore duplicate col err */ }
+
+    try {
+        $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `hl_rooms` (
+          `id` INT(3) UNSIGNED NOT NULL,
+          `player1_id` VARCHAR(50) NOT NULL,
+          `player2_id` VARCHAR(50) DEFAULT NULL,
+          `status` VARCHAR(20) DEFAULT 'waiting',
+          `difficulty` INT DEFAULT 2,
+          `player1_secret` INT DEFAULT NULL,
+          `player2_secret` INT DEFAULT NULL,
+          `current_turn` VARCHAR(10) DEFAULT NULL,
+          `winner` VARCHAR(10) DEFAULT NULL,
+          `turn_start_time` BIGINT DEFAULT NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        
+        $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `hl_guesses` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `room_id` INT(3) UNSIGNED NOT NULL,
+          `player` VARCHAR(10) NOT NULL,
+          `guess` INT NOT NULL,
+          `result` VARCHAR(20) NOT NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (`room_id`) REFERENCES `hl_rooms`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    } catch (PDOException $e) { /* ignore err */ }
 } catch (PDOException $e) {
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit;
