@@ -1162,9 +1162,9 @@ function hlSetSecret() {
 
     // Check valid range based on difficulty
     $diff = (int)$room['difficulty'];
-    if ($diff == 2 && ($secret < 10 || $secret > 99)) return error('Số phải từ 10 - 99');
-    if ($diff == 3 && ($secret < 100 || $secret > 999)) return error('Số phải từ 100 - 999');
-    if ($diff == 4 && ($secret < 1000 || $secret > 9999)) return error('Số phải từ 1000 - 9999');
+    if ($diff == 2 && ($secret < 0 || $secret > 99)) return error('Số phải từ 00 - 99');
+    if ($diff == 3 && ($secret < 0 || $secret > 999)) return error('Số phải từ 000 - 999');
+    if ($diff == 4 && ($secret < 0 || $secret > 9999)) return error('Số phải từ 0000 - 9999');
 
     $stmt = $pdo->prepare("UPDATE hl_rooms SET $myRole = ? WHERE id = ?");
     $stmt->execute([$secret, $roomId]);

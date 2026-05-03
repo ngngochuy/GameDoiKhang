@@ -94,9 +94,9 @@ function startPolling(mode) {
       
       // Update hint text based on difficulty
       const hintTexts = {
-        2: "Chọn số từ 10 - 99",
-        3: "Chọn số từ 100 - 999",
-        4: "Chọn số từ 1000 - 9999"
+        2: "Chọn số từ 00 - 99",
+        3: "Chọn số từ 000 - 999",
+        4: "Chọn số từ 0000 - 9999"
       };
       const hint = hintTexts[difficulty] || "Chọn số";
       document.getElementById('secret-hint').textContent = hint;
@@ -171,16 +171,16 @@ async function hlSetSecret() {
   }
 
   const secret = parseInt(secretVal);
-  if (difficulty === 2 && (secret < 10 || secret > 99)) {
-    showToast('Vui lòng nhập số từ 10 đến 99');
+  if (difficulty === 2 && (secret < 0 || secret > 99)) {
+    showToast('Vui lòng nhập số từ 00 đến 99');
     return;
   }
-  if (difficulty === 3 && (secret < 100 || secret > 999)) {
-    showToast('Vui lòng nhập số từ 100 đến 999');
+  if (difficulty === 3 && (secret < 0 || secret > 999)) {
+    showToast('Vui lòng nhập số từ 000 đến 999');
     return;
   }
-  if (difficulty === 4 && (secret < 1000 || secret > 9999)) {
-    showToast('Vui lòng nhập số từ 1000 đến 9999');
+  if (difficulty === 4 && (secret < 0 || secret > 9999)) {
+    showToast('Vui lòng nhập số từ 0000 đến 9999');
     return;
   }
 
@@ -230,7 +230,7 @@ function enterGameScreen(room) {
 function renderSecretDisplay() {
   const display = document.getElementById('my-secret-display');
   if (mySecret === null) return;
-  display.textContent = secretVisible ? mySecret : '???';
+  display.textContent = secretVisible ? mySecret.toString().padStart(difficulty, '0') : '?'.repeat(difficulty);
 
   const iconOff = document.getElementById('icon-eye-off');
   const iconOn = document.getElementById('icon-eye-on');
@@ -279,10 +279,10 @@ function startTimer(serverStart) {
 
     if (remaining <= 0 && isMyTurn) {
       // Auto submit random guess or skip
-      const randMap = { 2: [10, 99], 3: [100, 999], 4: [1000, 9999] };
-      const range = randMap[difficulty] || [10, 99];
+      const randMap = { 2: [0, 99], 3: [0, 999], 4: [0, 9999] };
+      const range = randMap[difficulty] || [0, 99];
       const randGuess = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-      document.getElementById('guess-input-number').value = randGuess;
+      document.getElementById('guess-input-number').value = randGuess.toString().padStart(difficulty, '0');
       hlSubmitGuess();
       return;
     }
@@ -339,11 +339,14 @@ function renderGuessRange(guesses) {
     }
   });
 
-  const baseMin = difficulty === 2 ? 10 : (difficulty === 3 ? 100 : 1000);
+  const baseMin = 0;
   const baseMax = difficulty === 2 ? 99 : (difficulty === 3 ? 999 : 9999);
   
-  const displayMin = min !== null ? min : baseMin;
-  const displayMax = max !== null ? max : baseMax;
+  let displayMin = min !== null ? min : baseMin;
+  let displayMax = max !== null ? max : baseMax;
+
+  displayMin = displayMin.toString().padStart(difficulty, '0');
+  displayMax = displayMax.toString().padStart(difficulty, '0');
 
   const area = document.getElementById('history-area');
   area.innerHTML = `

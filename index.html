@@ -112,7 +112,7 @@
           </div>
         </button>
         <!-- Card 3: Đoán Trúng Số -->
-        <button onclick="showPanel('hl-panel')"
+        <button onclick="showPanel('hl-panel'); setTimeout(() => setupOtpInputs(['hl-join-d1', 'hl-join-d2', 'hl-join-d3']), 100)"
           class="group relative bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)]/80 hover:border-purple-500/40 transition-all duration-300 text-left hover:shadow-xl hover:shadow-purple-500/5 active:scale-[0.98]">
           <div class="absolute top-0 right-0 w-32 h-32 opacity-[0.04] pointer-events-none -mr-4 -mt-4">
             <svg class="w-full h-full text-purple-500" viewBox="0 0 24 24" fill="currentColor" stroke="none">
