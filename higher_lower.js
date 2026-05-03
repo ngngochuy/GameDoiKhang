@@ -20,6 +20,7 @@ let lastGuessId = 0;
 let mySecret = null;
 let secretVisible = false;
 let difficulty = 2; // Default 2 digits
+let myGuessesList = [];
 
 const TURN_DURATION = 60;
 const POLL_MS = 1000;
@@ -134,13 +135,15 @@ function startPolling(mode) {
         // Fetch guesses
         const guessData = await api('hl_get_guesses', { room_id: roomId, after_id: lastGuessId });
         if (guessData.guesses && guessData.guesses.length > 0) {
+          let updated = false;
           guessData.guesses.forEach(g => {
             lastGuessId = Math.max(lastGuessId, parseInt(g.id));
             if (g.player === myRole) {
-              renderGuess(g);
-              scrollHistoryToBottom();
+              myGuessesList.push(g);
+              updated = true;
             }
           });
+          if (updated) renderGuessRange(myGuessesList);
         }
       }
     } catch (err) {
@@ -218,6 +221,8 @@ function enterGameScreen(room) {
     secretVisible = false;
     renderSecretDisplay();
   }
+  
+  if (myGuessesList.length === 0) renderGuessRange([]);
   
   document.getElementById('guess-input-number').focus();
 }
@@ -321,45 +326,55 @@ async function hlSubmitGuess() {
   }
 }
 
-function renderGuess(guessObj) {
-  const emptyEl = document.getElementById('history-empty');
-  if (emptyEl) emptyEl.style.display = 'none';
-
-  const historyArea = document.getElementById('history-area');
-  const item = document.createElement('div');
-  item.className = 'bg-[var(--bg-card)] rounded-xl p-3.5 border border-[var(--border)] shadow-sm';
-
-  let resHtml = '';
-  let colorClass = '';
+function renderGuessRange(guesses) {
+  let min = null;
+  let max = null;
   
-  if (guessObj.result === 'higher') {
-    colorClass = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-    resHtml = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg> Cao hơn`;
-  } else if (guessObj.result === 'lower') {
-    colorClass = 'text-sky-500 bg-sky-500/10 border-sky-500/20';
-    resHtml = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg> Thấp hơn`;
-  } else {
-    colorClass = 'text-green-500 bg-green-500/10 border-green-500/20';
-    resHtml = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Chính xác!`;
-  }
+  guesses.forEach(g => {
+    const val = parseInt(g.guess);
+    if (g.result === 'higher') {
+      if (min === null || val > min) min = val;
+    } else if (g.result === 'lower') {
+      if (max === null || val < max) max = val;
+    }
+  });
 
-  item.innerHTML = `
-    <div class="flex items-center justify-between">
-      <div class="text-xl font-bold text-[var(--text-primary)] pl-2">
-        ${guessObj.guess}
+  const baseMin = difficulty === 2 ? 10 : (difficulty === 3 ? 100 : 1000);
+  const baseMax = difficulty === 2 ? 99 : (difficulty === 3 ? 999 : 9999);
+  
+  const displayMin = min !== null ? min : baseMin;
+  const displayMax = max !== null ? max : baseMax;
+
+  const area = document.getElementById('history-area');
+  area.innerHTML = `
+    <div class="flex flex-col items-center justify-center h-full w-full py-4">
+      <p class="text-[11px] text-[var(--text-secondary)] uppercase tracking-widest font-bold mb-6">Khoảng tìm kiếm</p>
+      
+      <div class="flex items-center justify-center gap-3 w-full max-w-[300px] mx-auto">
+        <!-- Lớn hơn -->
+        <div class="flex-1 bg-[var(--bg-card)] border-2 rounded-2xl py-5 flex flex-col items-center justify-center transition-colors duration-300 ${min !== null ? 'border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)] bg-amber-500/5' : 'border-[var(--border)] text-[var(--text-secondary)]'}">
+          <span class="text-3xl font-black tracking-tight">${displayMin}</span>
+        </div>
+        
+        <div class="shrink-0 text-xl font-black text-[var(--text-muted)] opacity-50">&lt;</div>
+        
+        <!-- Dấu hỏi -->
+        <div class="shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center text-white text-2xl font-black shadow-[0_0_20px_rgba(168,85,247,0.4)] relative">
+          <div class="absolute inset-0 rounded-full border-2 border-white/20 animate-ping opacity-50"></div>
+          ?
+        </div>
+        
+        <div class="shrink-0 text-xl font-black text-[var(--text-muted)] opacity-50">&lt;</div>
+        
+        <!-- Nhỏ hơn -->
+        <div class="flex-1 bg-[var(--bg-card)] border-2 rounded-2xl py-5 flex flex-col items-center justify-center transition-colors duration-300 ${max !== null ? 'border-sky-500/40 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.15)] bg-sky-500/5' : 'border-[var(--border)] text-[var(--text-secondary)]'}">
+          <span class="text-3xl font-black tracking-tight">${displayMax}</span>
+        </div>
       </div>
-      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold tracking-wide ${colorClass}">
-        ${resHtml}
-      </div>
+      
+      ${guesses.length > 0 ? `<p class="mt-8 text-[11px] text-[var(--text-muted)]">Bạn đã đoán ${guesses.length} lần</p>` : ''}
     </div>
   `;
-
-  historyArea.appendChild(item);
-}
-
-function scrollHistoryToBottom() {
-  const area = document.getElementById('history-area');
-  requestAnimationFrame(() => area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }));
 }
 
 // ============================================

@@ -134,6 +134,11 @@ if (document.getElementById('bs-join-d1')) {
   setupOtpInputs(['bs-join-d1', 'bs-join-d2', 'bs-join-d3']);
 }
 
+// HL join inputs
+if (document.getElementById('hl-join-d1')) {
+  setupOtpInputs(['hl-join-d1', 'hl-join-d2', 'hl-join-d3']);
+}
+
 // ============================================
 // BATTLESHIP ROOM — CREATE & JOIN (redirects to battleship.html)
 // ============================================
