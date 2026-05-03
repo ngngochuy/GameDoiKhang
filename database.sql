@@ -3,6 +3,8 @@
 -- Import vào database sql_game_nghuy_vn
 -- ============================================
 
+USE sql_game_nghuy_vn;
+
 -- Bảng phòng chơi
 CREATE TABLE IF NOT EXISTS `rooms` (
   `id` INT(3) UNSIGNED NOT NULL,
